@@ -11,9 +11,9 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     DEVICES, FLUSH_NOTIFY, TOKENS, config,
     family::{CandidateDevice, Model},
-    background, led_config,
+    animation, background, led_config, leds,
     panel::{DEVICE_INFO, DeviceInfo},
-    power,
+    power, settings,
 };
 
 /// Inicializa un deck y atiende sus eventos hasta que se desconecta
@@ -30,12 +30,14 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
         device.clear_all_button_images().await?;
         device.flush().await?;
 
-        // Ajustes de LED y vibración de la familia N4 (config.toml de ambiso)
+        // Ajustes de LED y vibración de la familia N4 (config.toml de ambiso).
+        // Si los LED se han configurado en el panel, los lleva `leds::led_task`.
         if let Model::Akp05(kind) = &candidate.model {
             let cfg = config::load();
             log::info!("Applying config: {:?}", cfg);
+            let panel_leds = settings::for_device(&candidate.id).await.leds.is_some();
 
-            if let Some(led_config::LedMode::Static { colors }) = cfg.leds.mode {
+            if let (false, Some(led_config::LedMode::Static { colors })) = (panel_leds, cfg.leds.mode) {
                 device.set_led_brightness(cfg.leds.brightness).await?;
                 device.set_led_colors(&colors).await?;
             }
@@ -70,6 +72,15 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
 
     let layout = candidate.model.layout();
 
+    // Animación de arranque, antes de que OpenDeck pinte las teclas
+    let startup = settings::for_device(&candidate.id).await.animations.startup;
+    if let Err(e) = animation::play(&device, &candidate.model, &candidate.id, &startup, false).await {
+        log::warn!("Animación de arranque: {e}");
+    }
+    if startup.kind != settings::AnimKind::None {
+        animation::clear(&device).await.ok();
+    }
+
     log::info!("Registering device {}", candidate.id);
     if let Some(outbound) = OUTBOUND_EVENT_MANAGER.lock().await.as_mut() {
         outbound
@@ -93,6 +104,12 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
             protocol: candidate.model.protocol_version(),
             layout: candidate.model.controls().to_string(),
             screen: background::screen_size(&candidate.model),
+            key_size: candidate.model.key_size(),
+            vid: candidate.dev.vendor_id,
+            pid: candidate.dev.product_id,
+            serial: candidate.dev.serial_number.clone().unwrap_or_default(),
+            connected_at: chrono::Local::now().format("%d/%m %H:%M").to_string(),
+            leds: matches!(candidate.model, Model::Akp05(_)),
         },
     );
 
@@ -122,6 +139,12 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
                 std::future::pending::<()>().await;
             }
         } => {},
+        _ = async {
+            if matches!(candidate.model, Model::Akp05(_)) {
+                leds::led_task(candidate.id.clone()).await;
+            }
+            std::future::pending::<()>().await;
+        } => {},
         _ = token.cancelled() => {}
     };
 
@@ -130,7 +153,21 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     log::info!("Shutting down device {:?}", candidate);
 
     if let Some(device) = DEVICES.read().await.get(&candidate.id) {
-        device.shutdown().await.ok();
+        // Cierre ordenado (se cierra OpenDeck): animación de cierre
+        let anims = settings::for_device(&candidate.id).await.animations;
+        if token.is_cancelled() {
+            if let Err(e) =
+                animation::play(device, &candidate.model, &candidate.id, &anims.shutdown, true).await
+            {
+                log::warn!("Animación de cierre: {e}");
+            }
+        }
+        if token.is_cancelled() && anims.end_with_background {
+            // Teclas en negro: se queda el fondo del deck
+            animation::clear(device).await.ok();
+        } else {
+            device.shutdown().await.ok();
+        }
     }
 
     log::info!("Device task finished for {:?}", candidate);
@@ -267,6 +304,7 @@ async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzE
                         outbound.encoder_up(id, encoder).await.unwrap();
                     }
                     DeviceStateUpdate::EncoderTwist(encoder, val) => {
+                        leds::on_twist(&candidate.id, encoder).await;
                         outbound
                             .encoder_change(id, encoder, val as i16)
                             .await

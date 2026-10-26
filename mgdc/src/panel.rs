@@ -16,9 +16,13 @@ use serde::Deserialize;
 use serde_json::json;
 use tokio::sync::RwLock;
 
+use openaction::OUTBOUND_EVENT_MANAGER;
+
 use crate::{
-    DEVICES, background, power, schedule,
-    settings::{self, DeviceSettings},
+    DEVICES, animation, background,
+    family::Model,
+    power, schedule,
+    settings::{self, Animation, DeviceSettings, Palette},
 };
 
 /// Datos de cada deck conectado para mostrarlos en el panel
@@ -30,6 +34,13 @@ pub struct DeviceInfo {
     pub layout: String,
     /// Tamaño de la pantalla (ancho, alto) para el fondo
     pub screen: (u32, u32),
+    pub key_size: u32,
+    pub vid: u16,
+    pub pid: u16,
+    pub serial: String,
+    pub connected_at: String,
+    /// Tiene LED en las ruedas
+    pub leds: bool,
 }
 
 pub static DEVICE_INFO: LazyLock<RwLock<HashMap<String, DeviceInfo>>> =
@@ -63,11 +74,21 @@ async fn state() -> impl IntoResponse {
             "layout": i.as_ref().map(|x| x.layout.clone()).unwrap_or_default(),
             "screen": i.as_ref().map(|x| [x.screen.0, x.screen.1]),
             "has_background": background::saved_path(&id).is_some_and(|p| p.exists()),
+            "key_size": i.as_ref().map(|x| x.key_size),
+            "vid_pid": i.as_ref().map(|x| format!("{:04X}:{:04X}", x.vid, x.pid)),
+            "serial": i.as_ref().map(|x| x.serial.clone()),
+            "connected_at": i.as_ref().map(|x| x.connected_at.clone()),
+            "has_leds": i.as_ref().is_some_and(|x| x.leds),
+            "gifs": {
+                "startup": animation::gif_path(&id, "startup").is_some_and(|p| p.exists()),
+                "shutdown": animation::gif_path(&id, "shutdown").is_some_and(|p| p.exists()),
+            },
             "settings": settings::for_device(&id).await,
         }));
     }
     devices.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
-    Json(json!({ "version": env!("CARGO_PKG_VERSION"), "devices": devices }))
+    let palettes = settings::SETTINGS.read().await.palettes.clone();
+    Json(json!({ "version": env!("CARGO_PKG_VERSION"), "devices": devices, "palettes": palettes }))
 }
 
 #[derive(Deserialize)]
@@ -168,6 +189,121 @@ async fn get_background(Query(q): Query<IdBody>) -> impl IntoResponse {
     }
 }
 
+async fn save_palettes(headers: HeaderMap, Json(body): Json<Vec<Palette>>) -> impl IntoResponse {
+    if !origin_ok(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    settings::set_palettes(body).await;
+    Json(json!({ "ok": true })).into_response()
+}
+
+/// Vuelve a pedir a OpenDeck las imágenes de las teclas
+async fn rerender(id: &str) {
+    if let Some(outbound) = OUTBOUND_EVENT_MANAGER.lock().await.as_mut() {
+        let _ = outbound.rerender_images(id.to_string()).await;
+    }
+}
+
+#[derive(Deserialize)]
+struct TestAnimBody {
+    id: String,
+    #[serde(default)]
+    closing: bool,
+    animation: Animation,
+}
+
+/// "Probar en el deck": reproduce la animación (sin guardar) y repinta las teclas
+async fn test_animation(headers: HeaderMap, Json(body): Json<TestAnimBody>) -> impl IntoResponse {
+    if !origin_ok(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    // Si la pantalla está apagada, se enciende para ver la prueba
+    let level = power::screen_level(&body.id).await;
+    if level == 0 {
+        power::preview_brightness(&body.id, 50).await;
+    }
+    let result = {
+        let devices = DEVICES.read().await;
+        match devices.get(&body.id) {
+            None => Err("El deck no está conectado".to_string()),
+            Some(device) => match Model::from_vid_pid(device.vid, device.pid) {
+                None => Err("Modelo desconocido".to_string()),
+                Some(model) => {
+                    let r = animation::play(device, &model, &body.id, &body.animation, body.closing).await;
+                    animation::clear(device).await.ok();
+                    r.map_err(|e| e.to_string())
+                }
+            },
+        }
+    };
+    rerender(&body.id).await;
+    match result {
+        Ok(()) => Json(json!({ "ok": true })).into_response(),
+        Err(e) => Json(json!({ "error": e })).into_response(),
+    }
+}
+
+#[derive(Deserialize)]
+struct GifBody {
+    id: String,
+    which: String,
+    /// GIF como data URL
+    data: String,
+}
+
+async fn set_gif(headers: HeaderMap, Json(body): Json<GifBody>) -> impl IntoResponse {
+    if !origin_ok(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let Some((bytes, _)) = data_url::DataUrl::process(&body.data)
+        .ok()
+        .and_then(|u| u.decode_to_vec().ok())
+    else {
+        return Json(json!({ "error": "Archivo no válido" })).into_response();
+    };
+    if let Err(e) = animation::validate_gif(&bytes) {
+        return Json(json!({ "error": e })).into_response();
+    }
+    let Some(path) = animation::gif_path(&body.id, &body.which) else {
+        return Json(json!({ "error": "Sin carpeta de ajustes" })).into_response();
+    };
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    match std::fs::write(&path, bytes) {
+        Ok(()) => Json(json!({ "ok": true })).into_response(),
+        Err(e) => Json(json!({ "error": e.to_string() })).into_response(),
+    }
+}
+
+#[derive(Deserialize)]
+struct GifQuery {
+    id: String,
+    which: String,
+}
+
+async fn get_gif(Query(q): Query<GifQuery>) -> impl IntoResponse {
+    match animation::gif_path(&q.id, &q.which).and_then(|p| std::fs::read(p).ok()) {
+        Some(bytes) => ([(header::CONTENT_TYPE, "image/gif"), (header::CACHE_CONTROL, "no-store")], bytes)
+            .into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+/// "Reiniciar deck": borra, vuelve a poner el brillo y repinta las teclas
+async fn reset(headers: HeaderMap, Json(body): Json<IdBody>) -> impl IntoResponse {
+    if !origin_ok(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let ok = match DEVICES.read().await.get(&body.id) {
+        Some(device) => device.reset().await.is_ok(),
+        None => false,
+    };
+    power::invalidate_all().await;
+    rerender(&body.id).await;
+    Json(json!({ "ok": ok })).into_response()
+}
+
 pub async fn serve() {
     let app = Router::new()
         .route("/", get(|| async { Html(PANEL_HTML) }))
@@ -177,6 +313,10 @@ pub async fn serve() {
         .route("/api/brightness", post(brightness))
         .route("/api/identify", post(identify))
         .route("/api/background", get(get_background).post(set_background))
+        .route("/api/palettes", post(save_palettes))
+        .route("/api/animation/test", post(test_animation))
+        .route("/api/animation/gif", get(get_gif).post(set_gif))
+        .route("/api/reset", post(reset))
         .layer(DefaultBodyLimit::max(32 * 1024 * 1024));
 
     let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {

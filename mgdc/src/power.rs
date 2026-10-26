@@ -181,6 +181,16 @@ async fn tick() {
     }
 }
 
+/// Brillo actual de la pantalla (0 si está apagada), para que los LED lo sigan
+pub async fn screen_level(id: &str) -> u8 {
+    let rt = RUNTIME.lock().await;
+    match rt.get(id) {
+        Some(r) if r.asleep => 0,
+        Some(r) => r.applied.unwrap_or(100),
+        None => 100,
+    }
+}
+
 /// Tras suspender el PC el deck se reinicia: hay que reenviar el brillo
 pub async fn invalidate_all() {
     for r in RUNTIME.lock().await.values_mut() {

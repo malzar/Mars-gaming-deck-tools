@@ -83,6 +83,48 @@ impl Model {
         }
     }
 
+    /// Teclas con pantalla como cuadrícula (filas, columnas) en posiciones de OpenDeck
+    pub fn grid(&self) -> (u8, u8) {
+        match self {
+            Model::Akp153(_) => (akp153::ROW_COUNT as u8, akp153::COL_COUNT as u8),
+            Model::Akp05(_) => (akp05::ROW_COUNT as u8, akp05::COL_COUNT as u8),
+        }
+    }
+
+    /// Lado en píxeles de una tecla (para el panel)
+    pub fn key_size(&self) -> u32 {
+        match self {
+            Model::Akp153(k) if k.protocol_version() == 1 => 85,
+            Model::Akp153(_) => 95,
+            Model::Akp05(_) => 112,
+        }
+    }
+
+    /// Pinta una tecla sin enviarla todavía (hay que llamar a `device.flush()`)
+    pub async fn draw_key(
+        &self,
+        device: &Device,
+        position: u8,
+        image: image::DynamicImage,
+    ) -> Result<(), MirajazzError> {
+        match self {
+            Model::Akp153(k) => {
+                device
+                    .set_button_image(
+                        akp153::opendeck_to_device(position),
+                        akp153::get_image_format_for_key(k, position),
+                        image,
+                    )
+                    .await
+            }
+            Model::Akp05(k) => {
+                device
+                    .set_button_image(akp05::map_position(position, false)?, k.image_format(), image)
+                    .await
+            }
+        }
+    }
+
     /// Descripción de los controles para el panel
     pub fn controls(&self) -> &'static str {
         match self {

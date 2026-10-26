@@ -336,7 +336,7 @@ fn read_encoder_press(input: u8, _state: u8) -> Result<DeviceInput, MirajazzErro
 
 // ------------------------------------------------------------------ imagen --
 
-fn map_position(mut position: u8, is_encoder: bool) -> Result<u8, MirajazzError> {
+pub fn map_position(mut position: u8, is_encoder: bool) -> Result<u8, MirajazzError> {
     if is_encoder {
         position += 10;
     }

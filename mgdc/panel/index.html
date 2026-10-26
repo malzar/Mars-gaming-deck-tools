@@ -56,6 +56,19 @@
   input[type=color] { width: 36px; height: 30px; padding: 0 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
   select { height: 32px; padding: 0 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
   button:disabled { opacity: .5; cursor: default; }
+  .pl { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+  .pc { position: relative; display: block; border: 1px solid var(--border); border-radius: 8px; padding: 5px 6px; font-size: 12px; text-align: left; background: var(--card); }
+  .pc.on { border: 2px solid var(--accent); padding: 4px 5px; }
+  .pc .sw { height: 14px; border-radius: 4px; margin-bottom: 3px; }
+  .pc .del { position: absolute; top: 2px; right: 2px; border: 0; padding: 0 4px; font-size: 11px; color: var(--muted); }
+  .ed { margin-top: 10px; padding: 10px; border: 1px dashed var(--border); border-radius: 8px; }
+  .arow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; }
+  .arow > span:first-child { width: 58px; }
+  [data-kind] button { padding: 6px 9px; }
+  .arow [data-test] { margin-left: auto; }
+  .knobs { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+  .kn { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); }
+  .thumb { height: 30px; border-radius: 4px; border: 1px solid var(--border); }
 </style>
 </head>
 <body>
@@ -169,10 +182,72 @@
       </div>
 
       <div class="card">
+        <p class="lbl" data-t="anims"></p>
+        <div class="arow">
+          <span data-t="startup"></span>
+          <div class="seg" data-kind="startup"></div>
+          <span class="gifbox" data-gif="startup" style="display:flex;gap:6px;align-items:center"><button data-t="pickGif"></button><img class="thumb hidden" alt=""></span>
+          <button data-test="startup" data-t="test"></button>
+        </div>
+        <div class="arow">
+          <span data-t="shutdown"></span>
+          <div class="seg" data-kind="shutdown"></div>
+          <span class="gifbox" data-gif="shutdown" style="display:flex;gap:6px;align-items:center"><button data-t="pickGif"></button><img class="thumb hidden" alt=""></span>
+          <button data-test="shutdown" data-t="test"></button>
+        </div>
+        <input type="file" id="gifFile" accept="image/gif" class="hidden">
+        <div class="row" style="margin-bottom:10px">
+          <span data-t="duration"></span>
+          <span class="sl"><input type="range" id="animDur" min="0.5" max="4" step="0.5"><span id="animDurV"></span></span>
+          <span data-t="endWith"></span>
+          <select id="endWith"><option value="bg" data-t="endBg"></option><option value="off" data-t="endOff"></option></select>
+        </div>
+        <div class="arow" style="margin-bottom:8px">
+          <span data-t="colors"></span>
+          <div class="seg" id="animCm"><button data-cm="one" data-t="oneColor"></button><button data-cm="pal" data-t="palette"></button></div>
+          <input type="color" id="animOne">
+        </div>
+        <div class="pl" id="animPal"></div>
+        <p style="font-size:12px;color:var(--muted);margin:10px 0 0" data-t="animNote"></p>
+      </div>
+
+      <div class="card" id="ledCard">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <p class="lbl" style="margin:0;flex:1" data-t="leds"></p>
+          <span id="ledState" style="font-size:12px;color:var(--faint)"></span>
+        </div>
+        <div class="seg" id="ledMode" style="margin-bottom:12px">
+          <button data-lm="off" data-t="ledOff"></button><button data-lm="one" data-t="oneColor"></button><button data-lm="each" data-t="ledEach"></button><button data-lm="breath" data-t="ledBreath"></button><button data-lm="palette" data-t="palette"></button>
+        </div>
+        <div class="row">
+          <span id="ledColLbl" data-t="colors"></span>
+          <span id="ledCols" style="display:flex;gap:6px"></span>
+          <span data-t="brightness"></span>
+          <span class="sl"><input type="range" id="ledBri" min="0" max="100" step="5"><span id="ledBriV"></span></span>
+          <span data-t="ledFlash"></span><span><input type="checkbox" id="ledFlash"></span>
+          <span data-t="ledFollow"></span><span><input type="checkbox" id="ledFollow"></span>
+        </div>
+        <div class="pl" id="ledPal" style="margin-top:10px"></div>
+        <div class="knobs"><span style="font-size:12px;color:var(--muted)" data-t="preview"></span><div class="kn"></div><div class="kn"></div><div class="kn"></div><div class="kn"></div></div>
+      </div>
+
+      <div class="ed hidden" id="palEd">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:13px">
+          <span data-t="name"></span><input type="text" id="palName" style="width:160px">
+          <span style="flex:1"></span><span id="palErr" class="msg err"></span>
+        </div>
+        <div id="palStops" style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end"></div>
+        <div id="palSw" style="height:16px;border-radius:4px;margin:10px 0"></div>
+        <div style="display:flex;gap:8px"><button id="palAdd" data-t="addColor"></button><span style="flex:1"></span><button id="palCancel" data-t="cancel"></button><button id="palSave" class="primary" data-t="savePal"></button></div>
+      </div>
+
+      <div class="card">
         <p class="lbl" data-t="info"></p>
         <div class="row" id="info" style="font-size:12px;color:var(--muted)"></div>
         <div style="display:flex;gap:8px;margin-top:10px">
           <button id="identify" data-t="identify"></button>
+          <button id="resetDeck" data-t="resetDeck"></button>
+          <button id="copyInfo" data-t="copyInfo"></button>
         </div>
       </div>
 
@@ -196,6 +271,15 @@ const TXT = {
     transition: 'Transición suave', schedOff: 'Desactivado: se usa el brillo de la sección Pantalla.',
     info: 'Información', identify: 'Identificar deck', close: 'Cerrar', save: 'Guardar', saved: 'Guardado',
     model: 'Modelo', id: 'Id en OpenDeck', protocol: 'Protocolo', controls: 'Controles',
+    serial: 'Número de serie', screenI: 'Pantalla', keys: 'teclas', since: 'Conectado desde', resetDeck: 'Reiniciar deck', copyInfo: 'Copiar datos', copied: 'Copiado',
+    anims: 'Animaciones', startup: 'Arranque', shutdown: 'Cierre', test: 'Probar', pickGif: 'GIF…', duration: 'Duración',
+    endWith: 'Al terminar el cierre, dejar', endBg: 'El fondo del deck', endOff: 'Pantalla apagada', colors: 'Colores', oneColor: 'Un color', palette: 'Paleta',
+    kNone: 'Ninguna', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
+    animNote: 'El cierre se ve al cerrar OpenDeck. Al apagar el PC puede no dar tiempo. Guarda para que se usen al arrancar y al cerrar.',
+    noGif: 'Elige primero un GIF', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
+    leds: 'LED de las ruedas', ledOff: 'Apagado', ledEach: 'Uno por rueda', ledBreath: 'Respirar', ledFlash: 'Destello al girar una rueda',
+    ledFollow: 'Seguir el brillo día/noche y el apagado', preview: 'Vista previa', ledsToml: 'Sin configurar: se usa config.toml', ledsSave: 'Se aplica al guardar',
+    newPal: 'Nueva paleta', name: 'Nombre', addColor: 'Añadir color', cancel: 'Cancelar', savePal: 'Guardar paleta', needName: 'Ponle un nombre', delPal: '¿Borrar la paleta',
     empty: 'No hay ningún deck conectado. Conéctalo y vuelve a abrir los ajustes.', polar: 'Hoy no amanece o no anochece en esa latitud',
     unsaved: 'Hay cambios sin guardar. ¿Cerrar igualmente?', connected: 'Conectado',
     bg: 'Fondo del deck', bgSrcImage: 'Imagen', bgSrcColor: 'Color plano', bgPick: 'Elegir imagen…', bgCover: 'Rellenar', bgContain: 'Encajar', bgColor: 'Color', bgFill: 'Color de los bordes', bgNoImage: 'Elige una imagen o usa un color plano',
@@ -212,6 +296,15 @@ const TXT = {
     transition: 'Smooth transition', schedOff: 'Off: the Screen brightness is used.',
     info: 'Information', identify: 'Identify deck', close: 'Close', save: 'Save', saved: 'Saved',
     model: 'Model', id: 'OpenDeck id', protocol: 'Protocol', controls: 'Controls',
+    serial: 'Serial number', screenI: 'Screen', keys: 'keys', since: 'Connected since', resetDeck: 'Reset deck', copyInfo: 'Copy details', copied: 'Copied',
+    anims: 'Animations', startup: 'Startup', shutdown: 'Shutdown', test: 'Test', pickGif: 'GIF…', duration: 'Duration',
+    endWith: 'After the shutdown animation, leave', endBg: 'The deck background', endOff: 'Screen off', colors: 'Colors', oneColor: 'One color', palette: 'Palette',
+    kNone: 'None', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
+    animNote: 'The shutdown animation plays when OpenDeck closes. When the PC shuts down there may not be time. Save to use them on startup and shutdown.',
+    noGif: 'Choose a GIF first', gifSaved: 'GIF saved', playing: 'Playing…',
+    leds: 'Knob LEDs', ledOff: 'Off', ledEach: 'One per knob', ledBreath: 'Breathe', ledFlash: 'Flash when a knob turns',
+    ledFollow: 'Follow day/night brightness and screen off', preview: 'Preview', ledsToml: 'Not set: config.toml is used', ledsSave: 'Applied when you save',
+    newPal: 'New palette', name: 'Name', addColor: 'Add color', cancel: 'Cancel', savePal: 'Save palette', needName: 'Give it a name', delPal: 'Delete the palette',
     empty: 'No deck is connected. Plug it in and open the settings again.', polar: 'No sunrise or sunset today at that latitude',
     unsaved: 'You have unsaved changes. Close anyway?', connected: 'Connected',
     bg: 'Deck background', bgSrcImage: 'Image', bgSrcColor: 'Solid color', bgPick: 'Choose image…', bgCover: 'Fill', bgContain: 'Fit', bgColor: 'Color', bgFill: 'Border color', bgNoImage: 'Choose an image or use a solid color',
@@ -279,9 +372,19 @@ function fill() {
   $('city').value = sc.city; $('lat').value = sc.lat; $('lon').value = sc.lon; $('offset').value = sc.offset_minutes;
   $('dayStart').value = sc.day_start; $('nightStart').value = sc.night_start;
   $('dayBri').value = sc.day_brightness; $('nightBri').value = sc.night_brightness; $('transition').value = sc.transition_minutes;
-  $('info').innerHTML = [[t.model, current.name], [t.id, current.id], [t.protocol, 'v' + current.protocol], [t.controls, current.layout]]
-    .map(([a, b]) => `<span>${esc(a)}</span><span style="color:var(--text)">${esc(b)}</span>`).join('');
+  $('info').innerHTML = infoRows()
+  fillAnims(); fillLeds();
   update();
+}
+
+function infoList() {
+  const c = current, sc = c.screen || [];
+  return [[t.model, c.name], ['VID:PID', c.vid_pid || '—'], [t.serial, c.serial || '—'], [t.id, c.id],
+    [t.protocol, 'v' + c.protocol], [t.screenI, sc.length ? `${sc[0]} × ${sc[1]} · ${t.keys} ${c.key_size} × ${c.key_size}` : '—'],
+    [t.controls, c.layout], [t.since, c.connected_at || '—']];
+}
+function infoRows() {
+  return infoList().map(([a, b]) => `<span>${esc(a)}</span><span style="color:var(--text)">${esc(b)}</span>`).join('');
 }
 
 function update() {
@@ -418,6 +521,179 @@ $('bgApply').onclick = async () => {
   b.disabled = false;
 };
 
+// ------------------------------------------------------------- paletas --
+const BUILTIN = [
+  ['Arcoíris', ['#ff0000', '#ff8a00', '#ffe600', '#00d84a', '#00b3ff', '#5a3dff', '#d400ff']],
+  ['Pastel', ['#ffb3c7', '#ffd1a8', '#b8f2d0', '#c9b8ff']],
+  ['Aurora', ['#00ffa3', '#00d4ff', '#7a5cff', '#d04dff']],
+  ['Atardecer', ['#ffb347', '#ff6a3d', '#e8366f', '#7b2d8e']],
+  ['Océano', ['#00e5ff', '#0091ea', '#1a3cff', '#002f6c']],
+  ['Fuego', ['#ffe600', '#ff8a00', '#ff2a00', '#8a0000']],
+  ['Synthwave', ['#ff2fd1', '#a238ff', '#2de2ff']],
+  ['Hielo', ['#ffffff', '#bfe9ff', '#5ec8ff', '#2a7fff']],
+  ['Bosque', ['#c6ff6b', '#3ddc5a', '#0e8a4a', '#0b4d3a']],
+  ['Neón', ['#39ff14', '#ff073a', '#00f0ff', '#fff01f']],
+];
+let custom = [];
+const allPals = () => BUILTIN.concat(custom.map((p) => [p.name, p.colors, true]));
+const grad = (c) => c.length > 1 ? `linear-gradient(90deg,${c.join(',')})` : c[0];
+const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; };
+function samplePal(cols, x) {
+  if (cols.length === 1) return hexRgb(cols[0]);
+  const f = ((x % 1) + 1) % 1 * cols.length, i = Math.floor(f), k = f - i, a = hexRgb(cols[i]), b = hexRgb(cols[(i + 1) % cols.length]);
+  return a.map((v, j) => Math.round(v + (b[j] - v) * k));
+}
+
+// Rejilla de paletas reutilizable: sel() devuelve el nombre elegido, pick(nombre, colores)
+function palGrid(el, sel, pick) {
+  el.innerHTML = allPals().map(([n, c, mine], i) => `<button class="pc ${n === sel() ? 'on' : ''}" data-p="${i}"><div class="sw" style="background:${grad(c)}"></div>${esc(n)}${mine ? `<span class="del" data-d="${i}" title="×">✕</span>` : ''}</button>`).join('')
+    + `<button class="pc" data-new="1" style="text-align:center;color:var(--muted)">+ ${t.newPal}</button>`;
+  el.querySelectorAll('[data-p]').forEach((b) => b.onclick = (e) => {
+    const p = allPals()[+b.dataset.p];
+    if (e.target.dataset.d !== undefined) {
+      if (!confirm(`${t.delPal} "${p[0]}"?`)) return;
+      custom = custom.filter((x) => x.name !== p[0]); api('/api/palettes', custom).catch(() => {}); redrawPals(); return;
+    }
+    pick(p[0], p[1].slice()); redrawPals();
+  });
+  el.querySelector('[data-new]').onclick = () => openEditor(el, pick);
+}
+
+let edStops = [], edPick = null;
+function openEditor(after, pick) {
+  edPick = pick; edStops = ['#ff2fd1', '#2de2ff']; $('palName').value = ''; $('palErr').textContent = '';
+  after.after($('palEd')); $('palEd').classList.remove('hidden'); renderStops(); $('palName').focus();
+}
+function renderStops() {
+  $('palStops').innerHTML = edStops.map((c, i) => `<span style="display:flex;flex-direction:column;align-items:center;gap:2px"><input type="color" value="${c}" data-s="${i}"><button data-r="${i}" style="padding:0 6px;border:0;font-size:11px" ${edStops.length <= 2 ? 'disabled' : ''}>✕</button></span>`).join('');
+  $('palSw').style.background = grad(edStops); $('palAdd').disabled = edStops.length >= 8;
+  $('palStops').querySelectorAll('[data-s]').forEach((e) => e.oninput = () => { edStops[+e.dataset.s] = e.value; $('palSw').style.background = grad(edStops); });
+  $('palStops').querySelectorAll('[data-r]').forEach((e) => e.onclick = () => { edStops.splice(+e.dataset.r, 1); renderStops(); });
+}
+$('palAdd').onclick = () => { if (edStops.length < 8) { edStops.push(edStops[edStops.length - 1]); renderStops(); } };
+$('palCancel').onclick = () => $('palEd').classList.add('hidden');
+$('palName').oninput = () => { $('palErr').textContent = ''; };
+$('palSave').onclick = () => {
+  const n = $('palName').value.trim();
+  if (!n) { $('palErr').textContent = t.needName; return; }
+  custom = custom.filter((x) => x.name !== n).concat([{ name: n, colors: edStops.slice() }]);
+  api('/api/palettes', custom).catch((e) => msg(e.message, 'err'));
+  $('palEd').classList.add('hidden'); edPick(n, edStops.slice()); redrawPals();
+};
+
+// --------------------------------------------------------- animaciones --
+const KINDS = ['none', 'wave', 'keys', 'fade', 'gif'], KLBL = { none: 'kNone', wave: 'kWave', keys: 'kKeys', fade: 'kFade', gif: 'kGif' };
+let gifWhich = null;
+document.querySelectorAll('[data-kind]').forEach((seg) => {
+  seg.innerHTML = KINDS.map((k) => `<button data-k="${k}">${t[KLBL[k]]}</button>`).join('');
+  seg.querySelectorAll('button').forEach((b) => b.onclick = () => { draft.animations[seg.dataset.kind].kind = b.dataset.k; updateAnims(); });
+});
+const anims = () => draft.animations;
+function animColors(cols, pal) { for (const w of ['startup', 'shutdown']) { anims()[w].colors = cols.slice(); anims()[w].palette = pal; } }
+function fillAnims() {
+  const a = anims();
+  $('animDur').value = a.startup.duration_ms / 1000; $('endWith').value = a.end_with_background ? 'bg' : 'off';
+  $('animOne').value = a.startup.colors[0] || '#2f7de1';
+  updateAnims();
+}
+function updateAnims() {
+  const a = anims(), isOne = a.startup.palette === '';
+  for (const w of ['startup', 'shutdown']) {
+    document.querySelectorAll(`[data-kind=${w}] button`).forEach((b) => b.classList.toggle('on', b.dataset.k === a[w].kind));
+    const box = document.querySelector(`[data-gif=${w}]`), img = box.querySelector('img');
+    box.classList.toggle('hidden', a[w].kind !== 'gif');
+    const has = current.gifs && current.gifs[w];
+    img.classList.toggle('hidden', !has);
+    if (has && img.dataset.for !== current.id + w + current.gifs[w]) { img.src = `/api/animation/gif?id=${encodeURIComponent(current.id)}&which=${w}&t=${Date.now()}`; img.dataset.for = current.id + w + current.gifs[w]; }
+    document.querySelector(`[data-test=${w}]`).disabled = a[w].kind === 'none';
+  }
+  $('animDurV').textContent = (+$('animDur').value).toFixed(1).replace('.', ',') + ' s';
+  document.querySelectorAll('#animCm button').forEach((b) => b.classList.toggle('on', (b.dataset.cm === 'one') === isOne));
+  $('animOne').classList.toggle('hidden', !isOne); $('animPal').classList.toggle('hidden', isOne);
+  palGrid($('animPal'), () => anims().startup.palette, (n, c) => { animColors(c, n); });
+}
+$('animDur').oninput = (e) => { anims().startup.duration_ms = anims().shutdown.duration_ms = Math.round(+e.target.value * 1000); updateAnims(); };
+$('endWith').onchange = (e) => { anims().end_with_background = e.target.value === 'bg'; };
+$('animOne').oninput = (e) => animColors([e.target.value], '');
+document.querySelectorAll('#animCm button').forEach((b) => b.onclick = () => {
+  if (b.dataset.cm === 'one') animColors([$('animOne').value], '');
+  else { const p = BUILTIN[0]; animColors(p[1], p[0]); }
+  updateAnims();
+});
+document.querySelectorAll('[data-gif] button').forEach((b) => b.onclick = () => { gifWhich = b.closest('[data-gif]').dataset.gif; $('gifFile').click(); });
+$('gifFile').onchange = (e) => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const r = new FileReader();
+  r.onload = async () => {
+    try {
+      const res = await api('/api/animation/gif', { id: current.id, which: gifWhich, data: r.result });
+      if (res.error) throw new Error(res.error);
+      current.gifs = current.gifs || {}; current.gifs[gifWhich] = Date.now(); msg(t.gifSaved, 'ok'); updateAnims();
+    } catch (err) { msg(err.message, 'err'); }
+  };
+  r.readAsDataURL(f);
+};
+document.querySelectorAll('[data-test]').forEach((b) => b.onclick = async () => {
+  const w = b.dataset.test, a = anims()[w];
+  if (a.kind === 'gif' && !(current.gifs && current.gifs[w])) { msg(t.noGif, 'err'); return; }
+  b.disabled = true; msg(t.playing, 'wait');
+  try { const r = await api('/api/animation/test', { id: current.id, closing: w === 'shutdown', animation: a }); if (r.error) throw new Error(r.error); msg(''); }
+  catch (e) { msg(e.message, 'err'); }
+  b.disabled = false;
+});
+
+// ------------------------------------------------------------------ LED --
+const LED_DEFAULT = { mode: 'one', colors: ['#2f7de1', '#2f7de1', '#2f7de1', '#2f7de1'], palette: 'Arcoíris', palette_colors: BUILTIN[0][1].slice(), brightness: 80, flash_on_turn: true, follow_screen: true };
+const leds = () => draft.leds || LED_DEFAULT;
+const touchLeds = () => { if (!draft.leds) draft.leds = JSON.parse(JSON.stringify(LED_DEFAULT)); return draft.leds; };
+function fillLeds() {
+  $('ledCard').classList.toggle('hidden', !current.has_leds);
+  updateLeds();
+}
+function updateLeds() {
+  const l = leds();
+  $('ledState').textContent = draft.leds ? t.ledsSave : t.ledsToml;
+  document.querySelectorAll('#ledMode button').forEach((b) => b.classList.toggle('on', b.dataset.lm === l.mode));
+  const n = l.mode === 'each' ? 4 : (l.mode === 'one' || l.mode === 'breath') ? 1 : 0;
+  $('ledCols').innerHTML = [0, 1, 2, 3].slice(0, n).map((i) => `<input type="color" value="${l.colors[i] || '#2f7de1'}" data-lc="${i}">`).join('');
+  $('ledCols').querySelectorAll('[data-lc]').forEach((e) => e.oninput = () => {
+    const L = touchLeds(), i = +e.dataset.lc; L.colors[i] = e.value;
+    if (L.mode !== 'each') L.colors = [e.value, e.value, e.value, e.value];
+  });
+  $('ledColLbl').classList.toggle('hidden', n === 0); $('ledCols').classList.toggle('hidden', n === 0);
+  $('ledBri').value = l.brightness; $('ledBriV').textContent = l.brightness + ' %';
+  $('ledFlash').checked = l.flash_on_turn; $('ledFollow').checked = l.follow_screen;
+  $('ledPal').classList.toggle('hidden', l.mode !== 'palette');
+  palGrid($('ledPal'), () => leds().palette, (nm, c) => { const L = touchLeds(); L.palette = nm; L.palette_colors = c; });
+}
+document.querySelectorAll('#ledMode button').forEach((b) => b.onclick = () => { touchLeds().mode = b.dataset.lm; updateLeds(); });
+$('ledBri').oninput = (e) => { touchLeds().brightness = +e.target.value; $('ledBriV').textContent = e.target.value + ' %'; $('ledState').textContent = t.ledsSave; };
+$('ledFlash').onchange = (e) => { touchLeds().flash_on_turn = e.target.checked; updateLeds(); };
+$('ledFollow').onchange = (e) => { touchLeds().follow_screen = e.target.checked; updateLeds(); };
+let ledT = 0;
+setInterval(() => {
+  if (!draft || !current || !current.has_leds) return;
+  const l = leds(), b = l.brightness / 100; ledT += 0.05;
+  document.querySelectorAll('#ledCard .kn').forEach((k, i) => {
+    let c;
+    if (l.mode === 'off') c = [0, 0, 0];
+    else if (l.mode === 'one') c = hexRgb(l.colors[0]);
+    else if (l.mode === 'each') c = hexRgb(l.colors[i] || l.colors[0]);
+    else if (l.mode === 'breath') c = hexRgb(l.colors[0]).map((v) => v * (0.15 + 0.85 * (Math.sin(ledT * 2 * Math.PI / 3) + 1) / 2));
+    else c = samplePal(l.palette_colors, ledT * 0.15 + i / 4);
+    k.style.background = l.mode === 'off' ? 'transparent' : `rgb(${c.map((v) => Math.round(v * b)).join(',')})`;
+  });
+}, 50);
+
+function redrawPals() { if (draft) { updateAnims(); updateLeds(); } }
+
+// ------------------------------------------------------------------ info --
+$('resetDeck').onclick = () => api('/api/reset', { id: current.id }).catch((e) => msg(e.message, 'err'));
+$('copyInfo').onclick = async () => {
+  const text = infoList().map(([a, b]) => `${a}: ${b}`).join('\n');
+  try { await navigator.clipboard.writeText(text); msg(t.copied, 'ok'); } catch (_) { msg(text); }
+};
+
 $('identify').onclick = () => api('/api/identify', { id: current.id }).catch((e) => msg(e.message, 'err'));
 $('save').onclick = async () => {
   try {
@@ -434,7 +710,7 @@ setInterval(drawBar, 60000);
   try {
     const st = await api('/api/state');
     $('version').textContent = 'v' + st.version;
-    devices = st.devices;
+    devices = st.devices; custom = st.palettes || [];
     if (!devices.length) { $('empty').textContent = t.empty; $('empty').classList.remove('hidden'); return; }
     $('main').classList.remove('hidden');
     select(devices[0].id);

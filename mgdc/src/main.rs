@@ -24,11 +24,13 @@ use watcher::watcher_task;
 #[cfg(not(target_os = "windows"))]
 use tokio::signal::unix::{SignalKind, signal};
 
+mod animation;
 mod background;
 mod config;
 mod device;
 mod family;
 mod led_config;
+mod leds;
 mod panel;
 mod power;
 mod schedule;
