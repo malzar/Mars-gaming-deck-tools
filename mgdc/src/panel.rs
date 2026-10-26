@@ -38,7 +38,6 @@ pub struct DeviceInfo {
     pub vid: u16,
     pub pid: u16,
     pub serial: String,
-    pub connected_at: String,
     /// Tiene LED en las ruedas
     pub leds: bool,
 }
@@ -77,7 +76,6 @@ async fn state() -> impl IntoResponse {
             "key_size": i.as_ref().map(|x| x.key_size),
             "vid_pid": i.as_ref().map(|x| format!("{:04X}:{:04X}", x.vid, x.pid)),
             "serial": i.as_ref().map(|x| x.serial.clone()),
-            "connected_at": i.as_ref().map(|x| x.connected_at.clone()),
             "has_leds": i.as_ref().is_some_and(|x| x.leds),
             "gifs": {
                 "startup": animation::gif_path(&id, "startup").is_some_and(|p| p.exists()),

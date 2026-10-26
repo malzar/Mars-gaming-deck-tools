@@ -108,7 +108,6 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
             vid: candidate.dev.vendor_id,
             pid: candidate.dev.product_id,
             serial: candidate.dev.serial_number.clone().unwrap_or_default(),
-            connected_at: chrono::Local::now().format("%d/%m %H:%M").to_string(),
             leds: matches!(candidate.model, Model::Akp05(_)),
         },
     );

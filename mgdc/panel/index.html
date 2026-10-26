@@ -271,7 +271,7 @@ const TXT = {
     transition: 'Transición suave', schedOff: 'Desactivado: se usa el brillo de la sección Pantalla.',
     info: 'Información', identify: 'Identificar deck', close: 'Cerrar', save: 'Guardar', saved: 'Guardado',
     model: 'Modelo', id: 'Id en OpenDeck', protocol: 'Protocolo', controls: 'Controles',
-    serial: 'Número de serie', screenI: 'Pantalla', keys: 'teclas', since: 'Conectado desde', resetDeck: 'Reiniciar deck', copyInfo: 'Copiar datos', copied: 'Copiado',
+    serial: 'Número de serie', screenI: 'Pantalla', keys: 'teclas', resetDeck: 'Reiniciar deck', copyInfo: 'Copiar datos', copied: 'Copiado',
     anims: 'Animaciones', startup: 'Arranque', shutdown: 'Cierre', test: 'Probar', pickGif: 'GIF…', duration: 'Duración',
     endWith: 'Al terminar el cierre, dejar', endBg: 'El fondo del deck', endOff: 'Pantalla apagada', colors: 'Colores', oneColor: 'Un color', palette: 'Paleta',
     kNone: 'Ninguna', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
@@ -296,7 +296,7 @@ const TXT = {
     transition: 'Smooth transition', schedOff: 'Off: the Screen brightness is used.',
     info: 'Information', identify: 'Identify deck', close: 'Close', save: 'Save', saved: 'Saved',
     model: 'Model', id: 'OpenDeck id', protocol: 'Protocol', controls: 'Controls',
-    serial: 'Serial number', screenI: 'Screen', keys: 'keys', since: 'Connected since', resetDeck: 'Reset deck', copyInfo: 'Copy details', copied: 'Copied',
+    serial: 'Serial number', screenI: 'Screen', keys: 'keys', resetDeck: 'Reset deck', copyInfo: 'Copy details', copied: 'Copied',
     anims: 'Animations', startup: 'Startup', shutdown: 'Shutdown', test: 'Test', pickGif: 'GIF…', duration: 'Duration',
     endWith: 'After the shutdown animation, leave', endBg: 'The deck background', endOff: 'Screen off', colors: 'Colors', oneColor: 'One color', palette: 'Palette',
     kNone: 'None', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
@@ -381,7 +381,7 @@ function infoList() {
   const c = current, sc = c.screen || [];
   return [[t.model, c.name], ['VID:PID', c.vid_pid || '—'], [t.serial, c.serial || '—'], [t.id, c.id],
     [t.protocol, 'v' + c.protocol], [t.screenI, sc.length ? `${sc[0]} × ${sc[1]} · ${t.keys} ${c.key_size} × ${c.key_size}` : '—'],
-    [t.controls, c.layout], [t.since, c.connected_at || '—']];
+    [t.controls, c.layout]];
 }
 function infoRows() {
   return infoList().map(([a, b]) => `<span>${esc(a)}</span><span style="color:var(--text)">${esc(b)}</span>`).join('');
