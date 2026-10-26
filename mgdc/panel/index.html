@@ -181,6 +181,8 @@
 
       <div class="card">
         <p class="lbl" data-t="anims"></p>
+        <p id="noAnims" class="hidden" style="font-size:13px;color:var(--muted);margin:0" data-t="noAnims"></p>
+        <div id="animBody">
         <div class="arow">
           <span data-t="startup"></span>
           <div class="seg" data-kind="startup"></div>
@@ -206,8 +208,8 @@
           <input type="color" id="animOne">
         </div>
         <div class="pl" id="animPal"></div>
-        <p id="slowNote" class="hidden" style="font-size:12px;color:var(--muted);margin:10px 0 0" data-t="slowNote"></p>
-        <p style="font-size:12px;color:var(--muted);margin:6px 0 0" data-t="animNote"></p>
+        <p style="font-size:12px;color:var(--muted);margin:10px 0 0" data-t="animNote"></p>
+        </div>
       </div>
 
       <div class="ed hidden" id="palEd">
@@ -255,7 +257,7 @@ const TXT = {
     endWith: 'Al terminar el cierre, dejar', endBg: 'El fondo del deck', endOff: 'Pantalla apagada', colors: 'Colores', oneColor: 'Un color', palette: 'Paleta',
     kNone: 'Ninguna', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
     animNote: 'El cierre se ve al cerrar OpenDeck. Al apagar el PC puede no dar tiempo. Guarda para que se usen al arrancar y al cerrar.',
-    noGif: 'Elige primero un GIF', slowNote: 'Este deck admite pocos fotogramas por segundo: el fundido es lo más fluido y los GIF se verán a saltos.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
+    noGif: 'Elige primero un GIF', noAnims: 'Este deck no admite animaciones. Al cerrar OpenDeck las teclas se quedan en negro y se ve la imagen de fondo.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
    
    
     newPal: 'Nueva paleta', name: 'Nombre', addColor: 'Añadir color', cancel: 'Cancelar', savePal: 'Guardar paleta', needName: 'Ponle un nombre', delPal: '¿Borrar la paleta',
@@ -280,7 +282,7 @@ const TXT = {
     endWith: 'After the shutdown animation, leave', endBg: 'The deck background', endOff: 'Screen off', colors: 'Colors', oneColor: 'One color', palette: 'Palette',
     kNone: 'None', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
     animNote: 'The shutdown animation plays when OpenDeck closes. When the PC shuts down there may not be time. Save to use them on startup and shutdown.',
-    noGif: 'Choose a GIF first', slowNote: 'This deck handles few frames per second: fade is the smoothest and GIFs will look choppy.', gifSaved: 'GIF saved', playing: 'Playing…',
+    noGif: 'Choose a GIF first', noAnims: 'This deck does not support animations. When OpenDeck closes the keys go black and the background image shows.', gifSaved: 'GIF saved', playing: 'Playing…',
    
    
     newPal: 'New palette', name: 'Name', addColor: 'Add color', cancel: 'Cancel', savePal: 'Save palette', needName: 'Give it a name', delPal: 'Delete the palette',
@@ -570,7 +572,8 @@ document.querySelectorAll('[data-kind]').forEach((seg) => {
 const anims = () => draft.animations;
 function animColors(cols, pal) { for (const w of ['startup', 'shutdown']) { anims()[w].colors = cols.slice(); anims()[w].palette = pal; } }
 function fillAnims() {
-  const a = anims();
+  const a = anims(), ok = current.has_animations !== false;
+  $('noAnims').classList.toggle('hidden', ok); $('animBody').classList.toggle('hidden', !ok);
   $('animDur').value = a.startup.duration_ms / 1000; $('endWith').value = a.end_with_background ? 'bg' : 'off';
   $('animOne').value = a.startup.colors[0] || '#2f7de1';
   updateAnims();
@@ -586,7 +589,6 @@ function updateAnims() {
     if (has && img.dataset.for !== current.id + w + current.gifs[w]) { img.src = `/api/animation/gif?id=${encodeURIComponent(current.id)}&which=${w}&t=${Date.now()}`; img.dataset.for = current.id + w + current.gifs[w]; }
     document.querySelector(`[data-test=${w}]`).disabled = a[w].kind === 'none';
   }
-  $('slowNote').classList.toggle('hidden', current.protocol !== 1 || !['wave', 'keys', 'gif'].some((k) => a.startup.kind === k || a.shutdown.kind === k));
   $('animDurV').textContent = (+$('animDur').value).toFixed(1).replace('.', ',') + ' s';
   document.querySelectorAll('#animCm button').forEach((b) => b.classList.toggle('on', (b.dataset.cm === 'one') === isOne));
   $('animOne').classList.toggle('hidden', !isOne); $('animPal').classList.toggle('hidden', isOne);

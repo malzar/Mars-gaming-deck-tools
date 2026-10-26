@@ -72,7 +72,7 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
 
     // Animación de arranque, antes de que OpenDeck pinte las teclas
     let startup = settings::for_device(&candidate.id).await.animations.startup;
-    if startup.kind != settings::AnimKind::None {
+    if startup.kind != settings::AnimKind::None && candidate.model.supports_animations() {
         let level = power::screen_level(&candidate.id).await;
         if let Err(e) =
             animation::play(&device, &candidate.model, &candidate.id, &startup, false, level).await
@@ -109,6 +109,7 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
             layout: candidate.model.controls().to_string(),
             screen: background::screen_size(&candidate.model),
             key_size: candidate.model.key_size(),
+            animations: candidate.model.supports_animations(),
             vid: candidate.dev.vendor_id,
             pid: candidate.dev.product_id,
             serial: candidate.dev.serial_number.clone().unwrap_or_default(),
@@ -151,7 +152,11 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     if let Some(device) = DEVICES.read().await.get(&candidate.id) {
         // Cierre ordenado (se cierra OpenDeck): animación de cierre
         let anims = settings::for_device(&candidate.id).await.animations;
-        if token.is_cancelled() {
+        if token.is_cancelled() && !candidate.model.supports_animations() {
+            // Sin animación: teclas en negro y se queda la imagen de fondo
+            let level = power::screen_level(&candidate.id).await;
+            animation::finish_closing(device, true, level).await.ok();
+        } else if token.is_cancelled() {
             let level = power::screen_level(&candidate.id).await;
             if let Err(e) =
                 animation::play(device, &candidate.model, &candidate.id, &anims.shutdown, true, level).await

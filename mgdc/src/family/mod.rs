@@ -91,6 +91,12 @@ impl Model {
         }
     }
 
+    /// El MSD-ONE (protocolo 1) no aguanta las animaciones: se atasca y se
+    /// desconecta. En ese deck al cerrar solo se deja la imagen de fondo.
+    pub fn supports_animations(&self) -> bool {
+        !matches!(self, Model::Akp153(k) if k.protocol_version() == 1)
+    }
+
     /// Ritmo de las animaciones: (pausa mínima tras cada envío, ms extra por
     /// tecla enviada). El MSD-ONE (protocolo 1) se atasca y llega a
     /// desconectarse si se le mandan tandas de teclas demasiado seguidas.

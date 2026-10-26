@@ -35,6 +35,8 @@ pub struct DeviceInfo {
     /// Tamaño de la pantalla (ancho, alto) para el fondo
     pub screen: (u32, u32),
     pub key_size: u32,
+    /// Admite animaciones de arranque y cierre
+    pub animations: bool,
     pub vid: u16,
     pub pid: u16,
     pub serial: String,
@@ -72,6 +74,7 @@ async fn state() -> impl IntoResponse {
             "screen": i.as_ref().map(|x| [x.screen.0, x.screen.1]),
             "has_background": background::saved_path(&id).is_some_and(|p| p.exists()),
             "key_size": i.as_ref().map(|x| x.key_size),
+            "has_animations": i.as_ref().is_some_and(|x| x.animations),
             "vid_pid": i.as_ref().map(|x| format!("{:04X}:{:04X}", x.vid, x.pid)),
             "serial": i.as_ref().map(|x| x.serial.clone()),
             "gifs": {
@@ -231,6 +234,9 @@ async fn test_animation(headers: HeaderMap, Json(body): Json<TestAnimBody>) -> i
             None => Err("El deck no está conectado".to_string()),
             Some(device) => match Model::from_vid_pid(device.vid, device.pid) {
                 None => Err("Modelo desconocido".to_string()),
+                Some(model) if !model.supports_animations() => {
+                    Err("Este deck no admite animaciones".to_string())
+                }
                 Some(model) => {
                     let r = animation::play(device, &model, &body.id, &body.animation, body.closing, level).await;
                     // Al terminar la prueba se deja todo como estaba

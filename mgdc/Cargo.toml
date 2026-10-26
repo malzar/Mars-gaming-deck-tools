@@ -1,6 +1,6 @@
 [package]
 name = "mgdc"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 license = "GPL-3.0"
 description = "MGDC (Mars Gaming Deck Controller): un solo plugin de OpenDeck para los decks MSD-ONE (familia AKP153) y MSD-PRO (familia AKP05 / N4)"

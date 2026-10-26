@@ -34,7 +34,7 @@ En OpenDeck: **Plugins → MGDC → Ajustes del plugin**. Se abre una ventana co
   - *Horario fijo*: a qué hora empieza el día y a qué hora la noche.
   - Brillo de día, brillo de noche y una transición suave de X minutos.
 - **Fondo del deck**: elige una imagen, ajústala (rellenar o encajar, con color de relleno) y pulsa *Aplicar al deck*. Se guarda en la memoria del propio deck, así que se ve también al arrancar y sin OpenDeck. Si un clon lo pinta girado o en espejo, hay una corrección de orientación.
-- **Animaciones de arranque y de cierre**: ola, tecla a tecla, fundido o un GIF propio repartido por las teclas, con un color o una paleta. El cierre se ve al cerrar OpenDeck (al apagar el PC puede no dar tiempo).
+- **Animaciones de arranque y de cierre**: ola, tecla a tecla, fundido o un GIF propio repartido por las teclas, con un color o una paleta. El cierre se ve al cerrar OpenDeck (al apagar el PC puede no dar tiempo). El MSD-ONE no las admite: al cerrar deja las teclas en negro con la imagen de fondo.
 - **Paletas**: 10 de serie (Arcoíris, Pastel, Aurora, Atardecer, Océano, Fuego, Synthwave, Hielo, Bosque y Neón) y las que crees tú.
 - **Información**: modelo, VID:PID, número de serie, protocolo y pantalla; botones para identificar, reiniciar el deck y copiar los datos.
 - **Identificar deck**: hace parpadear el deck para saber cuál es.
