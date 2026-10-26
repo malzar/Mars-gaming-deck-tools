@@ -51,6 +51,11 @@
   .msg.ok { color: var(--ok); } .msg.err { color: var(--danger); }
   .hidden { display: none !important; }
   .empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+  #bgCanvas { width: 100%; height: auto; display: block; border-radius: 8px; border: 1px solid var(--border); background: #000; }
+  .bgbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  input[type=color] { width: 36px; height: 30px; padding: 0 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+  select { height: 32px; padding: 0 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+  button:disabled { opacity: .5; cursor: default; }
 </style>
 </head>
 <body>
@@ -129,6 +134,35 @@
       </div>
 
       <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <p class="lbl" style="margin:0;flex:1" data-t="bg"></p>
+          <span id="bgSize" style="font-size:12px;color:var(--faint)"></span>
+        </div>
+        <canvas id="bgCanvas" width="854" height="480"></canvas>
+        <div class="bgbar">
+          <button id="bgPick" data-t="bgPick"></button>
+          <input type="file" id="bgFile" accept="image/*" class="hidden">
+          <div class="seg">
+            <button data-fit="cover" data-t="bgCover"></button>
+            <button data-fit="contain" data-t="bgContain"></button>
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><span data-t="bgColor"></span><input type="color" id="bgColor" value="#000000"></label>
+          <span style="flex:1"></span>
+          <button id="bgApply" class="primary" data-t="bgApply"></button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <span data-t="bgFix"></span>
+          <select id="bgFix">
+            <option value="none" data-t="fixNone"></option>
+            <option value="mirror" data-t="fixMirror"></option>
+            <option value="flip" data-t="fixFlip"></option>
+            <option value="rotate" data-t="fixRotate"></option>
+          </select>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:8px 0 0" data-t="bgNote"></p>
+      </div>
+
+      <div class="card">
         <p class="lbl" data-t="info"></p>
         <div class="row" id="info" style="font-size:12px;color:var(--muted)"></div>
         <div style="display:flex;gap:8px;margin-top:10px">
@@ -158,6 +192,10 @@ const TXT = {
     model: 'Modelo', id: 'Id en OpenDeck', protocol: 'Protocolo', controls: 'Controles',
     empty: 'No hay ningún deck conectado. Conéctalo y vuelve a abrir los ajustes.', polar: 'Hoy no amanece o no anochece en esa latitud',
     unsaved: 'Hay cambios sin guardar. ¿Cerrar igualmente?', connected: 'Conectado',
+    bg: 'Fondo del deck', bgPick: 'Elegir imagen…', bgCover: 'Rellenar', bgContain: 'Encajar', bgColor: 'Color',
+    bgApply: 'Aplicar al deck', bgUploading: 'Subiendo fondo…', bgDone: 'Fondo aplicado',
+    bgFix: 'Corrección si sale girado o en espejo', fixNone: 'Ninguna', fixMirror: 'Espejo horizontal', fixFlip: 'Espejo vertical', fixRotate: 'Girar 180°',
+    bgNote: 'Se guarda en la memoria del propio deck y tarda unos segundos. Si no lo ves, desenchufa y vuelve a enchufar el deck.',
   },
   en: {
     screen: 'Screen', brightness: 'Brightness', neverSleep: 'Never turn the screen off', sleepAfter: 'Turn the screen off after',
@@ -170,6 +208,10 @@ const TXT = {
     model: 'Model', id: 'OpenDeck id', protocol: 'Protocol', controls: 'Controls',
     empty: 'No deck is connected. Plug it in and open the settings again.', polar: 'No sunrise or sunset today at that latitude',
     unsaved: 'You have unsaved changes. Close anyway?', connected: 'Connected',
+    bg: 'Deck background', bgPick: 'Choose image…', bgCover: 'Fill', bgContain: 'Fit', bgColor: 'Color',
+    bgApply: 'Apply to deck', bgUploading: 'Uploading background…', bgDone: 'Background applied',
+    bgFix: 'Fix if it shows rotated or mirrored', fixNone: 'None', fixMirror: 'Mirror horizontally', fixFlip: 'Mirror vertically', fixRotate: 'Rotate 180°',
+    bgNote: 'It is stored in the deck itself and takes a few seconds. If you do not see it, unplug the deck and plug it back in.',
   },
 };
 const t = TXT[(navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en'];
@@ -203,7 +245,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const toMin = (s) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; };
 const dirty = () => draft && JSON.stringify(draft) !== saved;
 
-function msg(text, kind) { $('msg').textContent = text || ''; $('msg').className = 'msg ' + (kind || ''); if (text) setTimeout(() => { if ($('msg').textContent === text) $('msg').textContent = ''; }, 3000); }
+function msg(text, kind) { $('msg').textContent = text || ''; $('msg').className = 'msg ' + (kind || ''); if (text && kind !== 'wait') setTimeout(() => { if ($('msg').textContent === text) $('msg').textContent = ''; }, 3000); }
 
 // ------------------------------------------------------------------ decks --
 function renderDevices() {
@@ -219,7 +261,7 @@ function select(id) {
   current = devices.find((d) => d.id === id) || devices[0];
   draft = JSON.parse(JSON.stringify(current.settings));
   saved = JSON.stringify(draft);
-  renderDevices(); fill(); refreshSun();
+  renderDevices(); fill(); refreshSun(); loadBackground();
 }
 
 // ----------------------------------------------------------------- campos --
@@ -312,6 +354,54 @@ $('nightStart').onchange = (e) => { draft.schedule.night_start = e.target.value;
 $('dayBri').oninput = (e) => { draft.schedule.day_brightness = +e.target.value; update(); };
 $('nightBri').oninput = (e) => { draft.schedule.night_brightness = +e.target.value; update(); };
 $('transition').onchange = (e) => { draft.schedule.transition_minutes = Math.max(0, Math.round(+e.target.value || 0)); drawBar(); };
+
+// ------------------------------------------------------------------ fondo --
+let bgImg = null, bgFit = 'cover';
+
+function drawBackground() {
+  const c = $('bgCanvas'), x = c.getContext('2d'), W = c.width, H = c.height;
+  x.fillStyle = $('bgColor').value; x.fillRect(0, 0, W, H);
+  if (bgImg) {
+    const k = (bgFit === 'cover' ? Math.max : Math.min)(W / bgImg.width, H / bgImg.height);
+    const w = bgImg.width * k, h = bgImg.height * k;
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(bgImg, (W - w) / 2, (H - h) / 2, w, h);
+  }
+  document.querySelectorAll('[data-fit]').forEach((b) => b.classList.toggle('on', b.dataset.fit === bgFit));
+}
+
+function loadImage(src) {
+  return new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; });
+}
+
+async function loadBackground() {
+  const [w, h] = current.screen || [854, 480];
+  $('bgCanvas').width = w; $('bgCanvas').height = h; $('bgSize').textContent = w + ' × ' + h;
+  bgImg = null; bgFit = 'cover';
+  if (current.has_background) {
+    try { bgImg = await loadImage('/api/background?id=' + encodeURIComponent(current.id) + '&t=' + Date.now()); } catch (_) { bgImg = null; }
+  }
+  drawBackground();
+}
+
+$('bgPick').onclick = () => $('bgFile').click();
+$('bgFile').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f);
+  try { bgImg = await loadImage(url); drawBackground(); } catch (_) { msg('Imagen no válida', 'err'); }
+  e.target.value = '';
+};
+document.querySelectorAll('[data-fit]').forEach((b) => b.onclick = () => { bgFit = b.dataset.fit; drawBackground(); });
+$('bgColor').oninput = drawBackground;
+$('bgApply').onclick = async () => {
+  const b = $('bgApply'); b.disabled = true; msg(t.bgUploading, 'wait');
+  try {
+    const r = await api('/api/background', { id: current.id, image: $('bgCanvas').toDataURL('image/png'), fix: $('bgFix').value });
+    if (r.error) throw new Error(r.error);
+    current.has_background = true; msg(t.bgDone, 'ok');
+  } catch (e) { msg(e.message, 'err'); }
+  b.disabled = false;
+};
 
 $('identify').onclick = () => api('/api/identify', { id: current.id }).catch((e) => msg(e.message, 'err'));
 $('save').onclick = async () => {

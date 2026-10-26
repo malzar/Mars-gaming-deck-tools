@@ -7,8 +7,8 @@ use std::{
 
 use axum::{
     Json, Router,
-    extract::Query,
-    http::{HeaderMap, StatusCode},
+    extract::{DefaultBodyLimit, Query},
+    http::{HeaderMap, StatusCode, header},
     response::{Html, IntoResponse},
     routing::{get, post},
 };
@@ -17,7 +17,7 @@ use serde_json::json;
 use tokio::sync::RwLock;
 
 use crate::{
-    DEVICES, power, schedule,
+    DEVICES, background, power, schedule,
     settings::{self, DeviceSettings},
 };
 
@@ -28,6 +28,8 @@ pub struct DeviceInfo {
     pub model: String,
     pub protocol: usize,
     pub layout: String,
+    /// Tamaño de la pantalla (ancho, alto) para el fondo
+    pub screen: (u32, u32),
 }
 
 pub static DEVICE_INFO: LazyLock<RwLock<HashMap<String, DeviceInfo>>> =
@@ -59,6 +61,8 @@ async fn state() -> impl IntoResponse {
             "model": i.as_ref().map(|x| x.model.clone()).unwrap_or_default(),
             "protocol": i.as_ref().map(|x| x.protocol).unwrap_or(0),
             "layout": i.as_ref().map(|x| x.layout.clone()).unwrap_or_default(),
+            "screen": i.as_ref().map(|x| [x.screen.0, x.screen.1]),
+            "has_background": background::saved_path(&id).is_some_and(|p| p.exists()),
             "settings": settings::for_device(&id).await,
         }));
     }
@@ -120,6 +124,50 @@ async fn identify(headers: HeaderMap, Json(body): Json<IdBody>) -> impl IntoResp
     Json(json!({ "ok": true })).into_response()
 }
 
+#[derive(Deserialize)]
+struct BackgroundBody {
+    id: String,
+    /// Imagen como data URL (PNG o JPEG), ya al tamaño de la pantalla
+    image: String,
+    #[serde(default)]
+    fix: background::Fix,
+}
+
+async fn set_background(headers: HeaderMap, Json(body): Json<BackgroundBody>) -> impl IntoResponse {
+    if !origin_ok(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let bytes = match data_url::DataUrl::process(&body.image)
+        .ok()
+        .and_then(|u| u.decode_to_vec().ok())
+    {
+        Some((bytes, _)) => bytes,
+        None => return Json(json!({ "error": "Imagen no válida" })).into_response(),
+    };
+    let img = match image::load_from_memory(&bytes) {
+        Ok(img) => img,
+        Err(e) => return Json(json!({ "error": format!("Imagen no válida: {e}") })).into_response(),
+    };
+    match background::upload(&body.id, &img, body.fix).await {
+        Ok(()) => {
+            background::save_copy(&body.id, &img);
+            Json(json!({ "ok": true })).into_response()
+        }
+        Err(e) => {
+            log::error!("{e}");
+            Json(json!({ "error": e })).into_response()
+        }
+    }
+}
+
+async fn get_background(Query(q): Query<IdBody>) -> impl IntoResponse {
+    match background::saved_path(&q.id).and_then(|p| std::fs::read(p).ok()) {
+        Some(bytes) => ([(header::CONTENT_TYPE, "image/png"), (header::CACHE_CONTROL, "no-store")], bytes)
+            .into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
 pub async fn serve() {
     let app = Router::new()
         .route("/", get(|| async { Html(PANEL_HTML) }))
@@ -127,7 +175,9 @@ pub async fn serve() {
         .route("/api/sun", get(sun))
         .route("/api/save", post(save))
         .route("/api/brightness", post(brightness))
-        .route("/api/identify", post(identify));
+        .route("/api/identify", post(identify))
+        .route("/api/background", get(get_background).post(set_background))
+        .layer(DefaultBodyLimit::max(32 * 1024 * 1024));
 
     let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {
         Ok(l) => l,

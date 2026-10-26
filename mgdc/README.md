@@ -9,7 +9,7 @@ Un solo plugin de **OpenDeck** para controlar los dos decks de Mars Gaming y sus
 
 Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*. **No los tengas instalados a la vez**, porque se pelearían por los decks.
 
-> Estado: **fase 2** (panel de ajustes). Siguientes fases: fondo del deck y animaciones de arranque y cierre.
+> Estado: **fase 3** (fondo del deck). Siguiente fase: animaciones de arranque y cierre.
 
 ## Instalación
 
@@ -33,9 +33,10 @@ En OpenDeck: **Plugins → MGDC → Ajustes del plugin**. Se abre una ventana co
   - *Según el sol*: amanecer y puesta calculados a diario a partir de la ciudad o las coordenadas, sin internet. Se puede desplazar el cambio unos minutos antes o después.
   - *Horario fijo*: a qué hora empieza el día y a qué hora la noche.
   - Brillo de día, brillo de noche y una transición suave de X minutos.
+- **Fondo del deck**: elige una imagen, ajústala (rellenar o encajar, con color de relleno) y pulsa *Aplicar al deck*. Se guarda en la memoria del propio deck, así que se ve también al arrancar y sin OpenDeck. Si un clon lo pinta girado o en espejo, hay una corrección de orientación.
 - **Identificar deck**: hace parpadear el deck para saber cuál es.
 
-Los ajustes se guardan en `%APPDATA%\mgdc\settings.json`.
+Los ajustes se guardan en `%APPDATA%\mgdc\settings.json` y una copia del último fondo de cada deck en `%APPDATA%\mgdc\backgrounds`.
 
 Notas:
 - "Apagar la pantalla" pone el brillo a 0, así al despertar no hace falta volver a enviar las imágenes.
@@ -54,7 +55,7 @@ Genera `dist\com.malzar.mgdc.sdPlugin.zip`.
 
 ## Configuración de LED y vibración (familia N4)
 
-Se mantiene el `config.toml` del plugin de ambiso. MGDC lo busca en `%APPDATA%\mgdc\config.toml` y, si no existe, en `%APPDATA%\opendeck-akp05\config.toml`. En la fase 2 todo esto pasa al panel de ajustes.
+Se mantiene el `config.toml` del plugin de ambiso. MGDC lo busca en `%APPDATA%\mgdc\config.toml` y, si no existe, en `%APPDATA%\opendeck-akp05\config.toml`. Más adelante pasará al panel de ajustes.
 
 ## Créditos y licencia
 
@@ -63,3 +64,4 @@ GPL-3.0. Basado en:
 - [opendeck-akp153](https://github.com/4ndv/opendeck-akp153), de Andrey Viktorov (4ndv), GPL-3.0.
 - [opendeck-akp05](https://github.com/ambiso/opendeck-akp05), de ambiso, GPL-3.0.
 - [mirajazz](https://github.com/4ndv/mirajazz) (versión de [ambiso](https://github.com/ambiso/mirajazz)).
+- Protocolo del fondo: [StreamDock-Device-SDK](https://github.com/MiraboxSpace/StreamDock-Device-SDK), de Mirabox.

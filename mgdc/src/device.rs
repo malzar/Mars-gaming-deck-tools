@@ -11,7 +11,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     DEVICES, FLUSH_NOTIFY, TOKENS, config,
     family::{CandidateDevice, Model},
-    led_config,
+    background, led_config,
     panel::{DEVICE_INFO, DeviceInfo},
     power,
 };
@@ -92,6 +92,7 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
             model: format!("{:?}", candidate.model),
             protocol: candidate.model.protocol_version(),
             layout: candidate.model.controls().to_string(),
+            screen: background::screen_size(&candidate.model),
         },
     );
 
@@ -239,6 +240,11 @@ async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzE
             log::debug!("New update: {:#?}", update);
 
             let id = candidate.id.clone();
+
+            // Durante la subida del fondo el deck manda respuestas que no son pulsaciones
+            if background::muted(&id).await {
+                continue;
+            }
 
             // Cuenta como actividad; si la pantalla estaba apagada, la enciende
             // y (según ajustes) ignora esa pulsación
