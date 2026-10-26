@@ -140,17 +140,21 @@
         </div>
         <canvas id="bgCanvas" width="854" height="480"></canvas>
         <div class="bgbar">
-          <button id="bgPick" data-t="bgPick"></button>
-          <input type="file" id="bgFile" accept="image/*" class="hidden">
           <div class="seg">
-            <button data-fit="cover" data-t="bgCover"></button>
-            <button data-fit="contain" data-t="bgContain"></button>
+            <button data-src="image" data-t="bgSrcImage"></button>
+            <button data-src="color" data-t="bgSrcColor"></button>
           </div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><span data-t="bgColor"></span><input type="color" id="bgColor" value="#000000"></label>
-          <span style="flex:1"></span>
-          <button id="bgApply" class="primary" data-t="bgApply"></button>
+          <span id="bgImageOpts" style="display:contents">
+            <button id="bgPick" data-t="bgPick"></button>
+            <input type="file" id="bgFile" accept="image/*" class="hidden">
+            <div class="seg">
+              <button data-fit="cover" data-t="bgCover"></button>
+              <button data-fit="contain" data-t="bgContain"></button>
+            </div>
+          </span>
+          <label id="bgColorBox" style="display:flex;align-items:center;gap:6px;font-size:13px"><span id="bgColorLbl"></span><input type="color" id="bgColor" value="#000000"></label>
         </div>
-        <div class="row" style="margin-top:10px">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;font-size:13px">
           <span data-t="bgFix"></span>
           <select id="bgFix">
             <option value="none" data-t="fixNone"></option>
@@ -158,6 +162,8 @@
             <option value="flip" data-t="fixFlip"></option>
             <option value="rotate" data-t="fixRotate"></option>
           </select>
+          <span style="flex:1"></span>
+          <button id="bgApply" class="primary" data-t="bgApply"></button>
         </div>
         <p style="font-size:12px;color:var(--muted);margin:8px 0 0" data-t="bgNote"></p>
       </div>
@@ -192,10 +198,10 @@ const TXT = {
     model: 'Modelo', id: 'Id en OpenDeck', protocol: 'Protocolo', controls: 'Controles',
     empty: 'No hay ningún deck conectado. Conéctalo y vuelve a abrir los ajustes.', polar: 'Hoy no amanece o no anochece en esa latitud',
     unsaved: 'Hay cambios sin guardar. ¿Cerrar igualmente?', connected: 'Conectado',
-    bg: 'Fondo del deck', bgPick: 'Elegir imagen…', bgCover: 'Rellenar', bgContain: 'Encajar', bgColor: 'Color',
+    bg: 'Fondo del deck', bgSrcImage: 'Imagen', bgSrcColor: 'Color plano', bgPick: 'Elegir imagen…', bgCover: 'Rellenar', bgContain: 'Encajar', bgColor: 'Color', bgFill: 'Color de los bordes', bgNoImage: 'Elige una imagen o usa un color plano',
     bgApply: 'Aplicar al deck', bgUploading: 'Subiendo fondo…', bgDone: 'Fondo aplicado',
-    bgFix: 'Corrección si sale girado o en espejo', fixNone: 'Ninguna', fixMirror: 'Espejo horizontal', fixFlip: 'Espejo vertical', fixRotate: 'Girar 180°',
-    bgNote: 'Se guarda en la memoria del propio deck y tarda unos segundos. Si no lo ves, desenchufa y vuelve a enchufar el deck.',
+    bgFix: 'Corrección', fixNone: 'Ninguna', fixMirror: 'Espejo horizontal', fixFlip: 'Espejo vertical', fixRotate: 'Girar 180°',
+    bgNote: 'Se guarda en la memoria del propio deck y tarda unos segundos. Si no lo ves, desenchufa y vuelve a enchufar el deck. Usa la corrección solo si sale girado o en espejo.',
   },
   en: {
     screen: 'Screen', brightness: 'Brightness', neverSleep: 'Never turn the screen off', sleepAfter: 'Turn the screen off after',
@@ -208,10 +214,10 @@ const TXT = {
     model: 'Model', id: 'OpenDeck id', protocol: 'Protocol', controls: 'Controls',
     empty: 'No deck is connected. Plug it in and open the settings again.', polar: 'No sunrise or sunset today at that latitude',
     unsaved: 'You have unsaved changes. Close anyway?', connected: 'Connected',
-    bg: 'Deck background', bgPick: 'Choose image…', bgCover: 'Fill', bgContain: 'Fit', bgColor: 'Color',
+    bg: 'Deck background', bgSrcImage: 'Image', bgSrcColor: 'Solid color', bgPick: 'Choose image…', bgCover: 'Fill', bgContain: 'Fit', bgColor: 'Color', bgFill: 'Border color', bgNoImage: 'Choose an image or use a solid color',
     bgApply: 'Apply to deck', bgUploading: 'Uploading background…', bgDone: 'Background applied',
-    bgFix: 'Fix if it shows rotated or mirrored', fixNone: 'None', fixMirror: 'Mirror horizontally', fixFlip: 'Mirror vertically', fixRotate: 'Rotate 180°',
-    bgNote: 'It is stored in the deck itself and takes a few seconds. If you do not see it, unplug the deck and plug it back in.',
+    bgFix: 'Orientation fix', fixNone: 'None', fixMirror: 'Mirror horizontally', fixFlip: 'Mirror vertically', fixRotate: 'Rotate 180°',
+    bgNote: 'It is stored in the deck itself and takes a few seconds. If you do not see it, unplug the deck and plug it back in. Use the orientation fix only if it shows rotated or mirrored.',
   },
 };
 const t = TXT[(navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en'];
@@ -356,18 +362,26 @@ $('nightBri').oninput = (e) => { draft.schedule.night_brightness = +e.target.val
 $('transition').onchange = (e) => { draft.schedule.transition_minutes = Math.max(0, Math.round(+e.target.value || 0)); drawBar(); };
 
 // ------------------------------------------------------------------ fondo --
-let bgImg = null, bgFit = 'cover';
+let bgImg = null, bgFit = 'cover', bgSrc = 'image';
 
 function drawBackground() {
   const c = $('bgCanvas'), x = c.getContext('2d'), W = c.width, H = c.height;
-  x.fillStyle = $('bgColor').value; x.fillRect(0, 0, W, H);
-  if (bgImg) {
+  const useImage = bgSrc === 'image';
+  // Imagen: el color solo se ve en los bordes al encajar. Color plano: solo el color.
+  x.fillStyle = useImage && !bgImg ? '#000000' : $('bgColor').value; x.fillRect(0, 0, W, H);
+  if (useImage && bgImg) {
     const k = (bgFit === 'cover' ? Math.max : Math.min)(W / bgImg.width, H / bgImg.height);
     const w = bgImg.width * k, h = bgImg.height * k;
     x.imageSmoothingQuality = 'high';
     x.drawImage(bgImg, (W - w) / 2, (H - h) / 2, w, h);
   }
+  document.querySelectorAll('[data-src]').forEach((b) => b.classList.toggle('on', b.dataset.src === bgSrc));
   document.querySelectorAll('[data-fit]').forEach((b) => b.classList.toggle('on', b.dataset.fit === bgFit));
+  $('bgImageOpts').classList.toggle('hidden', !useImage);
+  $('bgColorBox').classList.toggle('hidden', useImage && bgFit !== 'contain');
+  $('bgColorLbl').textContent = useImage ? t.bgFill : t.bgColor;
+  $('bgApply').disabled = useImage && !bgImg;
+  $('bgApply').title = $('bgApply').disabled ? t.bgNoImage : '';
 }
 
 function loadImage(src) {
@@ -377,7 +391,7 @@ function loadImage(src) {
 async function loadBackground() {
   const [w, h] = current.screen || [854, 480];
   $('bgCanvas').width = w; $('bgCanvas').height = h; $('bgSize').textContent = w + ' × ' + h;
-  bgImg = null; bgFit = 'cover';
+  bgImg = null; bgFit = 'cover'; bgSrc = 'image';
   if (current.has_background) {
     try { bgImg = await loadImage('/api/background?id=' + encodeURIComponent(current.id) + '&t=' + Date.now()); } catch (_) { bgImg = null; }
   }
@@ -392,6 +406,7 @@ $('bgFile').onchange = async (e) => {
   e.target.value = '';
 };
 document.querySelectorAll('[data-fit]').forEach((b) => b.onclick = () => { bgFit = b.dataset.fit; drawBackground(); });
+document.querySelectorAll('[data-src]').forEach((b) => b.onclick = () => { bgSrc = b.dataset.src; drawBackground(); });
 $('bgColor').oninput = drawBackground;
 $('bgApply').onclick = async () => {
   const b = $('bgApply'); b.disabled = true; msg(t.bgUploading, 'wait');
