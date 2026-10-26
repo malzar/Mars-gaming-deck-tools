@@ -101,6 +101,22 @@ pub async fn preview_brightness(id: &str, value: u8) {
     set_device_brightness(id, value).await;
 }
 
+/// Detiene (o reanuda) los cambios automáticos de brillo de un deck
+pub async fn pause(id: &str, on: bool) {
+    {
+        let mut rt = RUNTIME.lock().await;
+        let r = rt.entry(id.to_string()).or_insert_with(Runtime::new);
+        r.paused = on;
+        r.last_activity = Instant::now();
+        if !on {
+            r.applied = None;
+        }
+    }
+    if !on {
+        CHANGED.notify_one();
+    }
+}
+
 /// Hace parpadear el deck para saber cuál es
 pub async fn identify(id: &str) {
     {

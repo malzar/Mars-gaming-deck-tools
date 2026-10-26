@@ -9,7 +9,7 @@ Un solo plugin de **OpenDeck** para controlar los dos decks de Mars Gaming y sus
 
 Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*. **No los tengas instalados a la vez**, porque se pelearían por los decks.
 
-> Estado: **fase 4** (animaciones, LED del MSD-PRO e información).
+> Estado: **fase 4** (animaciones e información).
 
 ## Instalación
 
@@ -36,7 +36,6 @@ En OpenDeck: **Plugins → MGDC → Ajustes del plugin**. Se abre una ventana co
 - **Fondo del deck**: elige una imagen, ajústala (rellenar o encajar, con color de relleno) y pulsa *Aplicar al deck*. Se guarda en la memoria del propio deck, así que se ve también al arrancar y sin OpenDeck. Si un clon lo pinta girado o en espejo, hay una corrección de orientación.
 - **Animaciones de arranque y de cierre**: ola, tecla a tecla, fundido o un GIF propio repartido por las teclas, con un color o una paleta. El cierre se ve al cerrar OpenDeck (al apagar el PC puede no dar tiempo).
 - **Paletas**: 10 de serie (Arcoíris, Pastel, Aurora, Atardecer, Océano, Fuego, Synthwave, Hielo, Bosque y Neón) y las que crees tú.
-- **LED de las ruedas** (MSD-PRO): apagado, un color, uno por rueda, respirar o paleta; brillo, destello al girar y seguir a la pantalla. Mientras no se toquen, se usa el `config.toml`.
 - **Información**: modelo, VID:PID, número de serie, protocolo y pantalla; botones para identificar, reiniciar el deck y copiar los datos.
 - **Identificar deck**: hace parpadear el deck para saber cuál es.
 

@@ -30,7 +30,6 @@ mod config;
 mod device;
 mod family;
 mod led_config;
-mod leds;
 mod panel;
 mod power;
 mod schedule;
@@ -83,6 +82,11 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
         log::debug!("Asked to set image: {:#?}", event);
 
         let id = event.device.clone();
+
+        // Durante una animación de prueba no se pintan las teclas de OpenDeck
+        if animation::busy(&id).await {
+            return Ok(());
+        }
 
         if let Some(device) = DEVICES.read().await.get(&event.device) {
             family::set_image(device, &id, event)

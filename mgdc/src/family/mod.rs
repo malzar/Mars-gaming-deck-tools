@@ -91,6 +91,25 @@ impl Model {
         }
     }
 
+    /// Ritmo de las animaciones: (pausa mínima tras cada envío, ms extra por
+    /// tecla enviada). El MSD-ONE (protocolo 1) se atasca y llega a
+    /// desconectarse si se le mandan tandas de teclas demasiado seguidas.
+    pub fn anim_pacing(&self) -> (u64, u64) {
+        match self {
+            Model::Akp153(k) if k.protocol_version() == 1 => (80, 16),
+            Model::Akp153(_) => (50, 6),
+            Model::Akp05(_) => (40, 4),
+        }
+    }
+
+    /// Niveles de intensidad de la ola: menos niveles = menos teclas que cambian
+    pub fn anim_levels(&self) -> f32 {
+        match self {
+            Model::Akp153(k) if k.protocol_version() == 1 => 3.0,
+            _ => 6.0,
+        }
+    }
+
     /// Lado en píxeles de una tecla (para el panel)
     pub fn key_size(&self) -> u32 {
         match self {

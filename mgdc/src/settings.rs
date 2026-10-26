@@ -116,49 +116,6 @@ impl Default for Animations {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum LedMode {
-    Off,
-    #[default]
-    One,
-    /// Un color por rueda
-    Each,
-    /// Un color que sube y baja
-    Breath,
-    /// Recorre los colores de una paleta
-    Palette,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Leds {
-    pub mode: LedMode,
-    /// 4 colores "#rrggbb" (uno por rueda; en "un color" y "respirar" se usa el primero)
-    pub colors: Vec<String>,
-    pub palette: String,
-    pub palette_colors: Vec<String>,
-    pub brightness: u8,
-    /// Destello al girar una rueda
-    pub flash_on_turn: bool,
-    /// Se apagan con la pantalla y siguen el brillo de día/noche
-    pub follow_screen: bool,
-}
-
-impl Default for Leds {
-    fn default() -> Self {
-        Self {
-            mode: LedMode::One,
-            colors: vec!["#2f7de1".into(); 4],
-            palette: "Arcoíris".into(),
-            palette_colors: Animation::default().colors,
-            brightness: 80,
-            flash_on_turn: true,
-            follow_screen: true,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DeviceSettings {
@@ -172,9 +129,6 @@ pub struct DeviceSettings {
     pub swallow_wake_press: bool,
     pub schedule: Schedule,
     pub animations: Animations,
-    /// LED de las ruedas (familia N4). None = no se ha tocado en el panel:
-    /// se respeta el config.toml de ambiso.
-    pub leds: Option<Leds>,
 }
 
 impl Default for DeviceSettings {
@@ -186,7 +140,6 @@ impl Default for DeviceSettings {
             swallow_wake_press: true,
             schedule: Schedule::default(),
             animations: Animations::default(),
-            leds: None,
         }
     }
 }
@@ -195,7 +148,7 @@ impl Default for DeviceSettings {
 #[serde(default)]
 pub struct AppSettings {
     pub devices: HashMap<String, DeviceSettings>,
-    /// Paletas creadas por el usuario (las de serie van en el panel)
+    /// Paletas creadas por el usuario para las animaciones (las de serie van en el panel)
     pub palettes: Vec<Palette>,
 }
 

@@ -66,8 +66,6 @@
   .arow > span:first-child { width: 58px; }
   [data-kind] button { padding: 6px 9px; }
   .arow [data-test] { margin-left: auto; }
-  .knobs { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
-  .kn { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); }
   .thumb { height: 30px; border-radius: 4px; border: 1px solid var(--border); }
 </style>
 </head>
@@ -208,27 +206,8 @@
           <input type="color" id="animOne">
         </div>
         <div class="pl" id="animPal"></div>
-        <p style="font-size:12px;color:var(--muted);margin:10px 0 0" data-t="animNote"></p>
-      </div>
-
-      <div class="card" id="ledCard">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-          <p class="lbl" style="margin:0;flex:1" data-t="leds"></p>
-          <span id="ledState" style="font-size:12px;color:var(--faint)"></span>
-        </div>
-        <div class="seg" id="ledMode" style="margin-bottom:12px">
-          <button data-lm="off" data-t="ledOff"></button><button data-lm="one" data-t="oneColor"></button><button data-lm="each" data-t="ledEach"></button><button data-lm="breath" data-t="ledBreath"></button><button data-lm="palette" data-t="palette"></button>
-        </div>
-        <div class="row">
-          <span id="ledColLbl" data-t="colors"></span>
-          <span id="ledCols" style="display:flex;gap:6px"></span>
-          <span data-t="brightness"></span>
-          <span class="sl"><input type="range" id="ledBri" min="0" max="100" step="5"><span id="ledBriV"></span></span>
-          <span data-t="ledFlash"></span><span><input type="checkbox" id="ledFlash"></span>
-          <span data-t="ledFollow"></span><span><input type="checkbox" id="ledFollow"></span>
-        </div>
-        <div class="pl" id="ledPal" style="margin-top:10px"></div>
-        <div class="knobs"><span style="font-size:12px;color:var(--muted)" data-t="preview"></span><div class="kn"></div><div class="kn"></div><div class="kn"></div><div class="kn"></div></div>
+        <p id="slowNote" class="hidden" style="font-size:12px;color:var(--muted);margin:10px 0 0" data-t="slowNote"></p>
+        <p style="font-size:12px;color:var(--muted);margin:6px 0 0" data-t="animNote"></p>
       </div>
 
       <div class="ed hidden" id="palEd">
@@ -276,9 +255,9 @@ const TXT = {
     endWith: 'Al terminar el cierre, dejar', endBg: 'El fondo del deck', endOff: 'Pantalla apagada', colors: 'Colores', oneColor: 'Un color', palette: 'Paleta',
     kNone: 'Ninguna', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
     animNote: 'El cierre se ve al cerrar OpenDeck. Al apagar el PC puede no dar tiempo. Guarda para que se usen al arrancar y al cerrar.',
-    noGif: 'Elige primero un GIF', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
-    leds: 'LED de las ruedas', ledOff: 'Apagado', ledEach: 'Uno por rueda', ledBreath: 'Respirar', ledFlash: 'Destello al girar una rueda',
-    ledFollow: 'Seguir el brillo día/noche y el apagado', preview: 'Vista previa', ledsToml: 'Sin configurar: se usa config.toml', ledsSave: 'Se aplica al guardar',
+    noGif: 'Elige primero un GIF', slowNote: 'Este deck admite pocos fotogramas por segundo: el fundido es lo más fluido y los GIF se verán a saltos.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
+   
+   
     newPal: 'Nueva paleta', name: 'Nombre', addColor: 'Añadir color', cancel: 'Cancelar', savePal: 'Guardar paleta', needName: 'Ponle un nombre', delPal: '¿Borrar la paleta',
     empty: 'No hay ningún deck conectado. Conéctalo y vuelve a abrir los ajustes.', polar: 'Hoy no amanece o no anochece en esa latitud',
     unsaved: 'Hay cambios sin guardar. ¿Cerrar igualmente?', connected: 'Conectado',
@@ -301,9 +280,9 @@ const TXT = {
     endWith: 'After the shutdown animation, leave', endBg: 'The deck background', endOff: 'Screen off', colors: 'Colors', oneColor: 'One color', palette: 'Palette',
     kNone: 'None', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
     animNote: 'The shutdown animation plays when OpenDeck closes. When the PC shuts down there may not be time. Save to use them on startup and shutdown.',
-    noGif: 'Choose a GIF first', gifSaved: 'GIF saved', playing: 'Playing…',
-    leds: 'Knob LEDs', ledOff: 'Off', ledEach: 'One per knob', ledBreath: 'Breathe', ledFlash: 'Flash when a knob turns',
-    ledFollow: 'Follow day/night brightness and screen off', preview: 'Preview', ledsToml: 'Not set: config.toml is used', ledsSave: 'Applied when you save',
+    noGif: 'Choose a GIF first', slowNote: 'This deck handles few frames per second: fade is the smoothest and GIFs will look choppy.', gifSaved: 'GIF saved', playing: 'Playing…',
+   
+   
     newPal: 'New palette', name: 'Name', addColor: 'Add color', cancel: 'Cancel', savePal: 'Save palette', needName: 'Give it a name', delPal: 'Delete the palette',
     empty: 'No deck is connected. Plug it in and open the settings again.', polar: 'No sunrise or sunset today at that latitude',
     unsaved: 'You have unsaved changes. Close anyway?', connected: 'Connected',
@@ -373,7 +352,7 @@ function fill() {
   $('dayStart').value = sc.day_start; $('nightStart').value = sc.night_start;
   $('dayBri').value = sc.day_brightness; $('nightBri').value = sc.night_brightness; $('transition').value = sc.transition_minutes;
   $('info').innerHTML = infoRows()
-  fillAnims(); fillLeds();
+  fillAnims();
   update();
 }
 
@@ -607,6 +586,7 @@ function updateAnims() {
     if (has && img.dataset.for !== current.id + w + current.gifs[w]) { img.src = `/api/animation/gif?id=${encodeURIComponent(current.id)}&which=${w}&t=${Date.now()}`; img.dataset.for = current.id + w + current.gifs[w]; }
     document.querySelector(`[data-test=${w}]`).disabled = a[w].kind === 'none';
   }
+  $('slowNote').classList.toggle('hidden', current.protocol !== 1 || !['wave', 'keys', 'gif'].some((k) => a.startup.kind === k || a.shutdown.kind === k));
   $('animDurV').textContent = (+$('animDur').value).toFixed(1).replace('.', ',') + ' s';
   document.querySelectorAll('#animCm button').forEach((b) => b.classList.toggle('on', (b.dataset.cm === 'one') === isOne));
   $('animOne').classList.toggle('hidden', !isOne); $('animPal').classList.toggle('hidden', isOne);
@@ -642,50 +622,7 @@ document.querySelectorAll('[data-test]').forEach((b) => b.onclick = async () => 
   b.disabled = false;
 });
 
-// ------------------------------------------------------------------ LED --
-const LED_DEFAULT = { mode: 'one', colors: ['#2f7de1', '#2f7de1', '#2f7de1', '#2f7de1'], palette: 'Arcoíris', palette_colors: BUILTIN[0][1].slice(), brightness: 80, flash_on_turn: true, follow_screen: true };
-const leds = () => draft.leds || LED_DEFAULT;
-const touchLeds = () => { if (!draft.leds) draft.leds = JSON.parse(JSON.stringify(LED_DEFAULT)); return draft.leds; };
-function fillLeds() {
-  $('ledCard').classList.toggle('hidden', !current.has_leds);
-  updateLeds();
-}
-function updateLeds() {
-  const l = leds();
-  $('ledState').textContent = draft.leds ? t.ledsSave : t.ledsToml;
-  document.querySelectorAll('#ledMode button').forEach((b) => b.classList.toggle('on', b.dataset.lm === l.mode));
-  const n = l.mode === 'each' ? 4 : (l.mode === 'one' || l.mode === 'breath') ? 1 : 0;
-  $('ledCols').innerHTML = [0, 1, 2, 3].slice(0, n).map((i) => `<input type="color" value="${l.colors[i] || '#2f7de1'}" data-lc="${i}">`).join('');
-  $('ledCols').querySelectorAll('[data-lc]').forEach((e) => e.oninput = () => {
-    const L = touchLeds(), i = +e.dataset.lc; L.colors[i] = e.value;
-    if (L.mode !== 'each') L.colors = [e.value, e.value, e.value, e.value];
-  });
-  $('ledColLbl').classList.toggle('hidden', n === 0); $('ledCols').classList.toggle('hidden', n === 0);
-  $('ledBri').value = l.brightness; $('ledBriV').textContent = l.brightness + ' %';
-  $('ledFlash').checked = l.flash_on_turn; $('ledFollow').checked = l.follow_screen;
-  $('ledPal').classList.toggle('hidden', l.mode !== 'palette');
-  palGrid($('ledPal'), () => leds().palette, (nm, c) => { const L = touchLeds(); L.palette = nm; L.palette_colors = c; });
-}
-document.querySelectorAll('#ledMode button').forEach((b) => b.onclick = () => { touchLeds().mode = b.dataset.lm; updateLeds(); });
-$('ledBri').oninput = (e) => { touchLeds().brightness = +e.target.value; $('ledBriV').textContent = e.target.value + ' %'; $('ledState').textContent = t.ledsSave; };
-$('ledFlash').onchange = (e) => { touchLeds().flash_on_turn = e.target.checked; updateLeds(); };
-$('ledFollow').onchange = (e) => { touchLeds().follow_screen = e.target.checked; updateLeds(); };
-let ledT = 0;
-setInterval(() => {
-  if (!draft || !current || !current.has_leds) return;
-  const l = leds(), b = l.brightness / 100; ledT += 0.05;
-  document.querySelectorAll('#ledCard .kn').forEach((k, i) => {
-    let c;
-    if (l.mode === 'off') c = [0, 0, 0];
-    else if (l.mode === 'one') c = hexRgb(l.colors[0]);
-    else if (l.mode === 'each') c = hexRgb(l.colors[i] || l.colors[0]);
-    else if (l.mode === 'breath') c = hexRgb(l.colors[0]).map((v) => v * (0.15 + 0.85 * (Math.sin(ledT * 2 * Math.PI / 3) + 1) / 2));
-    else c = samplePal(l.palette_colors, ledT * 0.15 + i / 4);
-    k.style.background = l.mode === 'off' ? 'transparent' : `rgb(${c.map((v) => Math.round(v * b)).join(',')})`;
-  });
-}, 50);
-
-function redrawPals() { if (draft) { updateAnims(); updateLeds(); } }
+function redrawPals() { if (draft) updateAnims(); }
 
 // ------------------------------------------------------------------ info --
 $('resetDeck').onclick = () => api('/api/reset', { id: current.id }).catch((e) => msg(e.message, 'err'));

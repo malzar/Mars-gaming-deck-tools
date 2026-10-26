@@ -38,8 +38,6 @@ pub struct DeviceInfo {
     pub vid: u16,
     pub pid: u16,
     pub serial: String,
-    /// Tiene LED en las ruedas
-    pub leds: bool,
 }
 
 pub static DEVICE_INFO: LazyLock<RwLock<HashMap<String, DeviceInfo>>> =
@@ -76,7 +74,6 @@ async fn state() -> impl IntoResponse {
             "key_size": i.as_ref().map(|x| x.key_size),
             "vid_pid": i.as_ref().map(|x| format!("{:04X}:{:04X}", x.vid, x.pid)),
             "serial": i.as_ref().map(|x| x.serial.clone()),
-            "has_leds": i.as_ref().is_some_and(|x| x.leds),
             "gifs": {
                 "startup": animation::gif_path(&id, "startup").is_some_and(|p| p.exists()),
                 "shutdown": animation::gif_path(&id, "shutdown").is_some_and(|p| p.exists()),
@@ -216,10 +213,18 @@ async fn test_animation(headers: HeaderMap, Json(body): Json<TestAnimBody>) -> i
         return StatusCode::FORBIDDEN.into_response();
     }
     // Si la pantalla está apagada, se enciende para ver la prueba
-    let level = power::screen_level(&body.id).await;
+    let mut level = power::screen_level(&body.id).await;
     if level == 0 {
-        power::preview_brightness(&body.id, 50).await;
+        level = 50;
+        power::preview_brightness(&body.id, level).await;
     }
+    if animation::busy(&body.id).await {
+        return Json(json!({ "error": "Ya hay una animación en marcha" })).into_response();
+    }
+    animation::set_busy(&body.id, true).await;
+    power::pause(&body.id, true).await;
+    // Margen para que el deck termine lo que estuviera pintando
+    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
     let result = {
         let devices = DEVICES.read().await;
         match devices.get(&body.id) {
@@ -227,13 +232,18 @@ async fn test_animation(headers: HeaderMap, Json(body): Json<TestAnimBody>) -> i
             Some(device) => match Model::from_vid_pid(device.vid, device.pid) {
                 None => Err("Modelo desconocido".to_string()),
                 Some(model) => {
-                    let r = animation::play(device, &model, &body.id, &body.animation, body.closing).await;
+                    let r = animation::play(device, &model, &body.id, &body.animation, body.closing, level).await;
+                    // Al terminar la prueba se deja todo como estaba
                     animation::clear(device).await.ok();
+                    device.set_brightness(level).await.ok();
+                    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
                     r.map_err(|e| e.to_string())
                 }
             },
         }
     };
+    animation::set_busy(&body.id, false).await;
+    power::pause(&body.id, false).await;
     rerender(&body.id).await;
     match result {
         Ok(()) => Json(json!({ "ok": true })).into_response(),
