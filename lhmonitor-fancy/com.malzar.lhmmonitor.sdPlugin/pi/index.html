@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 12px 14px; font: 13px/1.5 "Segoe UI", system-ui, sans-serif; color: #d7d7d7; background: transparent; }
+  button { width: 100%; padding: 8px 12px; font: inherit; font-weight: 600; color: #fff; background: #2f7de1; border: 0; border-radius: 6px; cursor: pointer; }
+  button:hover { background: #3a8af0; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; color: #9b9b9b; font-size: 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #777; flex-shrink: 0; }
+  .ok { background: #5DCAA5; } .err { background: #E24B4A; }
+  .help { margin-top: 10px; font-size: 12px; color: #9b9b9b; }
+  code { font-family: Consolas, monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+  <button id="open">Abrir configuración</button>
+  <div class="row"><span class="dot" id="dot"></span><span id="status">…</span></div>
+  <div class="help" id="help"></div>
+<script>
+let ws, ctx, uuid, action;
+const TXT = {
+  es: { open: 'Abrir configuración', ok: 'Conectado a', err: 'Sin conexión con', help: '1 clic: cambiar dato · 2 clics: pausa · 3 clics: siguiente' },
+  en: { open: 'Open settings', ok: 'Connected to', err: 'Not connected to', help: '1 click: next value · 2 clicks: pause · 3 clicks: next item' },
+};
+let t = TXT.es;
+function setLang(l) { t = TXT[l] || TXT.en; document.getElementById('open').textContent = t.open; document.getElementById('help').textContent = t.help; }
+
+// Punto de entrada estándar del SDK de Stream Deck (también lo usa OpenDeck)
+function connectElgatoStreamDeckSocket(port, piUUID, registerEvent, info, actionInfo) {
+  uuid = piUUID;
+  try { setLang(String(JSON.parse(info).application.language || '').startsWith('es') ? 'es' : 'en'); } catch (_) { setLang('es'); }
+  try { const a = JSON.parse(actionInfo); ctx = a.context; action = a.action; } catch (_) {}
+  ws = new WebSocket('ws://127.0.0.1:' + port);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ event: registerEvent, uuid: piUUID }));
+    toPlugin({ cmd: 'status' });
+  };
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.event === 'sendToPropertyInspector') {
+      const p = msg.payload || {};
+      if (p.lang) setLang(p.lang);
+      document.getElementById('dot').className = 'dot ' + (p.ok ? 'ok' : 'err');
+      document.getElementById('status').innerHTML = `${p.ok ? t.ok : t.err} <code>${(p.url || '').replace(/</g, '&lt;')}</code>`;
+    }
+  };
+}
+function toPlugin(payload) {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event: 'sendToPlugin', action, context: uuid, payload }));
+}
+document.getElementById('open').onclick = () => toPlugin({ cmd: 'openPanel' });
+</script>
+</body>
+</html>

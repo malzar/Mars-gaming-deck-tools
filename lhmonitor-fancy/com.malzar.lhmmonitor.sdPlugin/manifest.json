@@ -1,0 +1,147 @@
+{
+  "Name": "LHMonitor fancy",
+  "Description": "Muestra los datos de Libre Hardware Monitor en tus teclas, rotando entre núcleos, GPUs, discos, ventiladores... 1 clic: cambiar dato · 2 clics: pausa · 3 clics: siguiente.",
+  "Author": "Malzar",
+  "Version": "1.1.0.0",
+  "UUID": "com.malzar.lhmmonitor",
+  "SDKVersion": 2,
+  "CodePath": "plugin.js",
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "disabled"
+  },
+  "Icon": "imgs/plugin",
+  "Category": "LHMonitor fancy",
+  "CategoryIcon": "imgs/category",
+  "URL": "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor",
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Software": {
+    "MinimumVersion": "6.4"
+  },
+  "Actions": [
+    {
+      "Name": "CPU",
+      "UUID": "com.malzar.lhmmonitor.cpu",
+      "Icon": "imgs/act_cpu",
+      "Tooltip": "Núcleos de CPU: carga, temperatura y frecuencia",
+      "PropertyInspectorPath": "pi/index.html",
+      "SupportedInMultiActions": false,
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/key_cpu",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "GPU",
+      "UUID": "com.malzar.lhmmonitor.gpu",
+      "Icon": "imgs/act_gpu",
+      "Tooltip": "Tarjetas gráficas: carga, temperatura, reloj, VRAM",
+      "PropertyInspectorPath": "pi/index.html",
+      "SupportedInMultiActions": false,
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/key_gpu",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Memoria",
+      "UUID": "com.malzar.lhmmonitor.mem",
+      "Icon": "imgs/act_mem",
+      "Tooltip": "RAM y memoria virtual",
+      "PropertyInspectorPath": "pi/index.html",
+      "SupportedInMultiActions": false,
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/key_mem",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Almacenamiento",
+      "UUID": "com.malzar.lhmmonitor.disk",
+      "Icon": "imgs/act_disk",
+      "Tooltip": "Discos: temperatura, espacio, lectura y escritura",
+      "PropertyInspectorPath": "pi/index.html",
+      "SupportedInMultiActions": false,
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/key_disk",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Red",
+      "UUID": "com.malzar.lhmmonitor.net",
+      "Icon": "imgs/act_net",
+      "Tooltip": "Adaptadores de red: bajada, subida, utilización",
+      "PropertyInspectorPath": "pi/index.html",
+      "SupportedInMultiActions": false,
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/key_net",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Ventilación",
+      "UUID": "com.malzar.lhmmonitor.fan",
+      "Icon": "imgs/act_fan",
+      "Tooltip": "Ventiladores: RPM y % de control",
+      "PropertyInspectorPath": "pi/index.html",
+      "SupportedInMultiActions": false,
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/key_fan",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Placa base",
+      "UUID": "com.malzar.lhmmonitor.board",
+      "Icon": "imgs/act_board",
+      "Tooltip": "Temperaturas y voltajes de la placa",
+      "PropertyInspectorPath": "pi/index.html",
+      "SupportedInMultiActions": false,
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/key_board",
+          "ShowTitle": false
+        }
+      ]
+    }
+  ]
+}

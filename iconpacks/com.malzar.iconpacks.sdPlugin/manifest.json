@@ -1,0 +1,32 @@
+{
+  "Name": "Gestor de packs de iconos",
+  "Description": "Gestor de packs de iconos: instala y desinstala packs en StreamDeck\\Icons desde una ventana. Recoge solos los packs que bajes a Descargas.",
+  "Author": "Malzar",
+  "Version": "1.3.0.0",
+  "UUID": "com.malzar.iconpacks",
+  "SDKVersion": 2,
+  "CodePath": "plugin.js",
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "disabled"
+  },
+  "Icon": "imgs/plugin",
+  "Category": "Packs de iconos",
+  "CategoryIcon": "imgs/category",
+  "OS": [
+    { "Platform": "windows", "MinimumVersion": "10" }
+  ],
+  "Software": { "MinimumVersion": "6.4" },
+  "Actions": [
+    {
+      "Name": "Packs de iconos",
+      "UUID": "com.malzar.iconpacks.import",
+      "Icon": "imgs/action",
+      "Tooltip": "Muestra los packs instalados. Al pulsar abre el gestor de packs.",
+      "SupportedInMultiActions": false,
+      "States": [
+        { "Image": "imgs/key", "TitleAlignment": "bottom", "FontSize": 12, "ShowTitle": true }
+      ]
+    }
+  ]
+}
