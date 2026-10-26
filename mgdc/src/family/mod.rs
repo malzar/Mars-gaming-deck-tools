@@ -83,6 +83,14 @@ impl Model {
         }
     }
 
+    /// Descripción de los controles para el panel
+    pub fn controls(&self) -> &'static str {
+        match self {
+            Model::Akp153(_) => "15 teclas + 3 iconos laterales",
+            Model::Akp05(_) => "10 teclas · 4 ruedas · tira táctil",
+        }
+    }
+
     /// Traductor de las entradas en bruto del deck a pulsaciones
     pub fn input_processor(&self) -> fn(u8, u8) -> Result<DeviceInput, MirajazzError> {
         match self {

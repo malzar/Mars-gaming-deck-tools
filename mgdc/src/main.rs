@@ -28,6 +28,10 @@ mod config;
 mod device;
 mod family;
 mod led_config;
+mod panel;
+mod power;
+mod schedule;
+mod settings;
 mod watcher;
 
 pub static DEVICES: LazyLock<RwLock<HashMap<String, Device>>> =
@@ -53,6 +57,15 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
             .write()
             .await
             .insert("_watcher_task".to_string(), token);
+
+        // Panel de ajustes y planificador de brillo/apagado
+        tracker.spawn(panel::serve());
+        let scheduler_token = CancellationToken::new();
+        tracker.spawn(power::scheduler_task(scheduler_token.clone()));
+        TOKENS
+            .write()
+            .await
+            .insert("_scheduler_task".to_string(), scheduler_token);
 
         log::info!("MGDC initialized");
 
@@ -87,17 +100,11 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
     ) -> EventHandlerResult {
         log::debug!("Asked to set brightness: {:#?}", event);
 
-        let id = event.device.clone();
-
-        if let Some(device) = DEVICES.read().await.get(&event.device) {
-            device
-                .set_brightness(event.brightness)
-                .await
-                .map_err(async |err| handle_error(&id, err).await)
-                .ok();
-        } else {
-            log::error!("Received event for unknown device: {}", event.device);
-        }
+        // El brillo que pone OpenDeck se guarda como brillo manual del deck.
+        // Si el horario de día/noche está activo, manda el horario.
+        let mut s = settings::for_device(&event.device).await;
+        s.brightness = event.brightness.min(100);
+        settings::set_for_device(&event.device, s).await;
 
         Ok(())
     }
@@ -115,7 +122,18 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
             let _ = device.reset().await;
             let _ = outbound.rerender_images(id.to_string()).await;
         }
+        drop(devices);
+        power::invalidate_all().await;
 
+        Ok(())
+    }
+
+    async fn show_settings_interface(
+        &self,
+        _event: ShowSettingsInterfaceEvent,
+        _outbound: &mut OutboundEventManager,
+    ) -> EventHandlerResult {
+        panel::open();
         Ok(())
     }
 }

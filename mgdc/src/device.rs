@@ -12,6 +12,8 @@ use crate::{
     DEVICES, FLUSH_NOTIFY, TOKENS, config,
     family::{CandidateDevice, Model},
     led_config,
+    panel::{DEVICE_INFO, DeviceInfo},
+    power,
 };
 
 /// Inicializa un deck y atiende sus eventos hasta que se desconecta
@@ -21,7 +23,10 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     let device: Result<Device, MirajazzError> = async {
         let device = connect(&candidate).await?;
 
-        device.set_brightness(50).await?;
+        // Brillo según los ajustes de MGDC (horario de día/noche incluido)
+        device
+            .set_brightness(power::initial_brightness(&candidate.id).await)
+            .await?;
         device.clear_all_button_images().await?;
         device.flush().await?;
 
@@ -79,6 +84,16 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
             .await
             .unwrap();
     }
+
+    DEVICE_INFO.write().await.insert(
+        candidate.id.clone(),
+        DeviceInfo {
+            name: candidate.model.human_name(),
+            model: format!("{:?}", candidate.model),
+            protocol: candidate.model.protocol_version(),
+            layout: candidate.model.controls().to_string(),
+        },
+    );
 
     DEVICES.write().await.insert(candidate.id.clone(), device);
 
@@ -224,6 +239,16 @@ async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzE
             log::debug!("New update: {:#?}", update);
 
             let id = candidate.id.clone();
+
+            // Cuenta como actividad; si la pantalla estaba apagada, la enciende
+            // y (según ajustes) ignora esa pulsación
+            let is_release = matches!(
+                update,
+                DeviceStateUpdate::ButtonUp(_) | DeviceStateUpdate::EncoderUp(_)
+            );
+            if power::on_input(&id, is_release).await {
+                continue;
+            }
 
             if let Some(outbound) = OUTBOUND_EVENT_MANAGER.lock().await.as_mut() {
                 match update {

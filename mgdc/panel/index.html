@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MGDC · Ajustes</title>
+<style>
+  :root {
+    --bg: #f4f3ef; --card: #ffffff; --soft: #f1efe8; --text: #1f1e1c; --muted: #6b6a65; --faint: #9a988f;
+    --border: rgba(0,0,0,.12); --accent: #2f7de1; --accent-bg: #e6f1fb; --accent-tx: #185fa5;
+    --ok: #3b6d11; --danger: #c43a3a; --day: rgba(239,159,39,.85); --night: rgba(55,138,221,.85);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161616; --card: #202020; --soft: #2a2a2a; --text: #ececec; --muted: #a3a3a3; --faint: #777;
+      --border: rgba(255,255,255,.12); --accent: #5aa2ff; --accent-bg: #0c2c4f; --accent-tx: #b5d4f4;
+      --ok: #97c459; --danger: #ff7b7b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .lbl { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+  input, button, select { font: inherit; color: var(--text); }
+  input[type=text], input[type=number], input[type=time] { height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+  input[type=number] { width: 76px; }
+  input[type=range] { width: 170px; accent-color: var(--accent); }
+  input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+  button { font-size: 13px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  button:hover { background: var(--soft); }
+  button.primary { border-color: var(--accent); color: var(--accent); }
+  .layout { display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 12px; margin-top: 12px; }
+  .dev { display: flex; flex-direction: column; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; background: var(--card); text-align: left; width: 100%; margin-bottom: 6px; }
+  .dev.on { border-color: var(--accent); background: var(--accent-bg); }
+  .dev small { font-size: 11px; color: var(--ok); }
+  .row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px 12px; align-items: center; font-size: 13px; }
+  .off { color: var(--faint); }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; font-size: 12px; padding: 6px 12px; }
+  .seg button.on { background: var(--accent-bg); color: var(--accent-tx); }
+  .sl { display: flex; align-items: center; gap: 8px; }
+  .sl span { min-width: 40px; text-align: right; }
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin: 8px 0 12px; }
+  .tile { background: var(--soft); border-radius: 8px; padding: 10px; }
+  .tile .k { font-size: 12px; color: var(--muted); }
+  .tile .v { font-size: 20px; font-weight: 600; }
+  #bar { position: relative; height: 32px; border-radius: 6px; overflow: hidden; background: var(--soft); margin-top: 14px; }
+  .ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); margin-top: 4px; }
+  .msg { font-size: 13px; }
+  .msg.ok { color: var(--ok); } .msg.err { color: var(--danger); }
+  .hidden { display: none !important; }
+  .empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;align-items:center;gap:8px">
+    <strong style="font-size:16px;flex:1" id="title">MGDC · Mars Gaming Deck Controller</strong>
+    <span style="font-size:12px;color:var(--muted)" id="version"></span>
+  </div>
+
+  <div id="empty" class="card empty hidden" style="margin-top:12px"></div>
+
+  <div class="layout hidden" id="main">
+    <div id="devices"></div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <p class="lbl" data-t="screen"></p>
+        <div class="row">
+          <span data-t="brightness"></span>
+          <span class="sl"><input type="range" id="brightness" min="0" max="100" step="1"><span id="brightnessV"></span></span>
+          <span data-t="neverSleep"></span>
+          <span><input type="checkbox" id="neverSleep"></span>
+          <span id="sleepLbl" data-t="sleepAfter"></span>
+          <span><input type="number" id="sleepMinutes" min="1" max="240" step="1"> min</span>
+          <span data-t="swallow"></span>
+          <span><input type="checkbox" id="swallow"></span>
+        </div>
+        <p id="briNote" class="hidden" style="font-size:12px;color:var(--muted);margin:8px 0 0" data-t="briNote"></p>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <p class="lbl" style="margin:0;flex:1" data-t="dayNight"></p>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="schedEnabled"><span data-t="enabled"></span></label>
+        </div>
+        <div id="schedBody">
+          <div class="seg" style="margin-bottom:12px">
+            <button data-mode="sun" data-t="modeSun"></button>
+            <button data-mode="fixed" data-t="modeFixed"></button>
+          </div>
+
+          <div id="sunBox">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input type="text" id="city" list="cities" style="flex:1;min-width:160px" data-tp="cityPh">
+              <datalist id="cities"></datalist>
+              <input type="number" id="lat" step="0.0001" min="-90" max="90" title="Latitud" style="width:104px">
+              <input type="number" id="lon" step="0.0001" min="-180" max="180" title="Longitud" style="width:104px">
+            </div>
+            <div class="tiles">
+              <div class="tile"><div class="k" data-t="sunrise"></div><div class="v" id="sunrise">--:--</div></div>
+              <div class="tile"><div class="k" data-t="sunset"></div><div class="v" id="sunset">--:--</div></div>
+            </div>
+            <div class="row" style="margin-bottom:10px">
+              <span data-t="offset"></span>
+              <span><input type="number" id="offset" step="5" min="-180" max="180"> min</span>
+            </div>
+          </div>
+
+          <div id="fixBox" class="row" style="margin-bottom:10px">
+            <span data-t="dayStart"></span><span><input type="time" id="dayStart"></span>
+            <span data-t="nightStart"></span><span><input type="time" id="nightStart"></span>
+          </div>
+
+          <div class="row">
+            <span data-t="dayBri"></span>
+            <span class="sl"><input type="range" id="dayBri" min="0" max="100" step="5"><span id="dayBriV"></span></span>
+            <span data-t="nightBri"></span>
+            <span class="sl"><input type="range" id="nightBri" min="0" max="100" step="5"><span id="nightBriV"></span></span>
+            <span data-t="transition"></span>
+            <span><input type="number" id="transition" min="0" max="120" step="5"> min</span>
+          </div>
+          <div id="bar"></div>
+          <div class="ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+        </div>
+        <p id="schedOff" style="font-size:13px;color:var(--faint);margin:0" data-t="schedOff"></p>
+      </div>
+
+      <div class="card">
+        <p class="lbl" data-t="info"></p>
+        <div class="row" id="info" style="font-size:12px;color:var(--muted)"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="identify" data-t="identify"></button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="msg" class="msg" style="flex:1"></span>
+        <button id="close" data-t="close"></button>
+        <button id="save" class="primary" data-t="save"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TXT = {
+  es: {
+    screen: 'Pantalla', brightness: 'Brillo', neverSleep: 'No apagar nunca la pantalla', sleepAfter: 'Apagar la pantalla tras',
+    swallow: 'La pulsación que la enciende no ejecuta la acción', briNote: 'Con el horario de día y noche activo, el brillo lo marca el horario.',
+    dayNight: 'Brillo de día y de noche', enabled: 'Activado', modeSun: 'Según el sol', modeFixed: 'Horario fijo',
+    cityPh: 'Ciudad', sunrise: 'Amanecer hoy', sunset: 'Puesta hoy', offset: 'Desplazar respecto al sol',
+    dayStart: 'Empieza el día', nightStart: 'Empieza la noche', dayBri: 'Brillo de día', nightBri: 'Brillo de noche',
+    transition: 'Transición suave', schedOff: 'Desactivado: se usa el brillo de la sección Pantalla.',
+    info: 'Información', identify: 'Identificar deck', close: 'Cerrar', save: 'Guardar', saved: 'Guardado',
+    model: 'Modelo', id: 'Id en OpenDeck', protocol: 'Protocolo', controls: 'Controles',
+    empty: 'No hay ningún deck conectado. Conéctalo y vuelve a abrir los ajustes.', polar: 'Hoy no amanece o no anochece en esa latitud',
+    unsaved: 'Hay cambios sin guardar. ¿Cerrar igualmente?', connected: 'Conectado',
+  },
+  en: {
+    screen: 'Screen', brightness: 'Brightness', neverSleep: 'Never turn the screen off', sleepAfter: 'Turn the screen off after',
+    swallow: 'The press that wakes it does not trigger the action', briNote: 'While the day/night schedule is on, it controls brightness.',
+    dayNight: 'Day and night brightness', enabled: 'Enabled', modeSun: 'Follow the sun', modeFixed: 'Fixed hours',
+    cityPh: 'City', sunrise: 'Sunrise today', sunset: 'Sunset today', offset: 'Shift relative to the sun',
+    dayStart: 'Day starts', nightStart: 'Night starts', dayBri: 'Day brightness', nightBri: 'Night brightness',
+    transition: 'Smooth transition', schedOff: 'Off: the Screen brightness is used.',
+    info: 'Information', identify: 'Identify deck', close: 'Close', save: 'Save', saved: 'Saved',
+    model: 'Model', id: 'OpenDeck id', protocol: 'Protocol', controls: 'Controls',
+    empty: 'No deck is connected. Plug it in and open the settings again.', polar: 'No sunrise or sunset today at that latitude',
+    unsaved: 'You have unsaved changes. Close anyway?', connected: 'Connected',
+  },
+};
+const t = TXT[(navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en'];
+
+const CITIES = [
+  ['Madrid', 40.4168, -3.7038], ['Barcelona', 41.3874, 2.1686], ['Valencia', 39.4699, -0.3763], ['Sevilla', 37.3891, -5.9845],
+  ['Zaragoza', 41.6488, -0.8891], ['Málaga', 36.7213, -4.4214], ['Murcia', 37.9922, -1.1307], ['Palma', 39.5696, 2.6502],
+  ['Las Palmas de Gran Canaria', 28.1235, -15.4363], ['Santa Cruz de Tenerife', 28.4636, -16.2518], ['Bilbao', 43.2630, -2.9350],
+  ['Alicante', 38.3452, -0.4810], ['Córdoba', 37.8882, -4.7794], ['Valladolid', 41.6523, -4.7245], ['Vigo', 42.2406, -8.7207],
+  ['Gijón', 43.5322, -5.6611], ['A Coruña', 43.3623, -8.4115], ['Granada', 37.1773, -3.5986], ['Oviedo', 43.3619, -5.8494],
+  ['Pamplona', 42.8125, -1.6458], ['Santander', 43.4623, -3.8100], ['San Sebastián', 43.3183, -1.9812], ['Salamanca', 40.9701, -5.6635],
+  ['Toledo', 39.8628, -4.0273], ['Cádiz', 36.5271, -6.2886], ['Almería', 36.8340, -2.4637], ['Badajoz', 38.8794, -6.9707],
+  ['Logroño', 42.4627, -2.4450], ['Lisboa', 38.7223, -9.1393], ['Londres', 51.5072, -0.1276], ['París', 48.8566, 2.3522],
+  ['Berlín', 52.5200, 13.4050], ['Roma', 41.9028, 12.4964], ['Nueva York', 40.7128, -74.0060], ['Ciudad de México', 19.4326, -99.1332],
+  ['Buenos Aires', -34.6037, -58.3816], ['Bogotá', 4.7110, -74.0721], ['Santiago de Chile', -33.4489, -70.6693], ['Lima', -12.0464, -77.0428],
+  ['Tokio', 35.6762, 139.6503],
+];
+
+const $ = (id) => document.getElementById(id);
+let devices = [], current = null, draft = null, saved = '';
+let sun = null, briTimer = null;
+
+document.querySelectorAll('[data-t]').forEach((e) => { e.textContent = t[e.dataset.t]; });
+document.querySelectorAll('[data-tp]').forEach((e) => { e.placeholder = t[e.dataset.tp]; });
+$('cities').innerHTML = CITIES.map(([n]) => `<option value="${n}">`).join('');
+
+const api = (path, body) => fetch(path, body
+  ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  : { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const toMin = (s) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+const dirty = () => draft && JSON.stringify(draft) !== saved;
+
+function msg(text, kind) { $('msg').textContent = text || ''; $('msg').className = 'msg ' + (kind || ''); if (text) setTimeout(() => { if ($('msg').textContent === text) $('msg').textContent = ''; }, 3000); }
+
+// ------------------------------------------------------------------ decks --
+function renderDevices() {
+  $('devices').innerHTML = devices.map((d) => `<button class="dev ${current && d.id === current.id ? 'on' : ''}" data-id="${esc(d.id)}">
+    <strong style="font-size:13px">${esc(d.name)}</strong><small>● ${t.connected}</small></button>`).join('');
+  $('devices').querySelectorAll('[data-id]').forEach((b) => b.onclick = () => {
+    if (dirty() && !confirm(t.unsaved)) return;
+    select(b.dataset.id);
+  });
+}
+
+function select(id) {
+  current = devices.find((d) => d.id === id) || devices[0];
+  draft = JSON.parse(JSON.stringify(current.settings));
+  saved = JSON.stringify(draft);
+  renderDevices(); fill(); refreshSun();
+}
+
+// ----------------------------------------------------------------- campos --
+function fill() {
+  const s = draft, sc = s.schedule;
+  $('brightness').value = s.brightness; $('brightnessV').textContent = s.brightness + ' %';
+  $('neverSleep').checked = s.never_sleep; $('sleepMinutes').value = s.sleep_minutes; $('swallow').checked = s.swallow_wake_press;
+  $('schedEnabled').checked = sc.enabled;
+  $('city').value = sc.city; $('lat').value = sc.lat; $('lon').value = sc.lon; $('offset').value = sc.offset_minutes;
+  $('dayStart').value = sc.day_start; $('nightStart').value = sc.night_start;
+  $('dayBri').value = sc.day_brightness; $('nightBri').value = sc.night_brightness; $('transition').value = sc.transition_minutes;
+  $('info').innerHTML = [[t.model, current.name], [t.id, current.id], [t.protocol, 'v' + current.protocol], [t.controls, current.layout]]
+    .map(([a, b]) => `<span>${esc(a)}</span><span style="color:var(--text)">${esc(b)}</span>`).join('');
+  update();
+}
+
+function update() {
+  const s = draft, sc = s.schedule;
+  $('brightnessV').textContent = s.brightness + ' %';
+  $('sleepMinutes').disabled = s.never_sleep; $('sleepLbl').className = s.never_sleep ? 'off' : '';
+  $('schedBody').classList.toggle('hidden', !sc.enabled); $('schedOff').classList.toggle('hidden', sc.enabled);
+  $('briNote').classList.toggle('hidden', !sc.enabled);
+  document.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === sc.mode));
+  $('sunBox').classList.toggle('hidden', sc.mode !== 'sun'); $('fixBox').classList.toggle('hidden', sc.mode !== 'fixed');
+  $('dayBriV').textContent = sc.day_brightness + ' %'; $('nightBriV').textContent = sc.night_brightness + ' %';
+  drawBar();
+}
+
+function windowMinutes() {
+  const sc = draft.schedule;
+  if (sc.mode === 'sun' && sun && !sun.error) {
+    const r = toMin(sun.sunrise) + (+sc.offset_minutes || 0), s = toMin(sun.sunset) + (+sc.offset_minutes || 0);
+    if (r < s) return [r, s];
+  }
+  return [toMin(sc.day_start) ?? 450, toMin(sc.night_start) ?? 1260];
+}
+
+// Mismo cálculo que el plugin (schedule.rs)
+function levelAt(m) {
+  const sc = draft.schedule, [day, night] = windowMinutes(), tr = +sc.transition_minutes || 0;
+  const d = +sc.day_brightness, n = +sc.night_brightness, lerp = (a, b, x) => Math.round(a + (b - a) * Math.min(1, Math.max(0, x)));
+  if (tr > 0 && m >= day && m < day + tr) return [lerp(n, d, (m - day) / tr), true];
+  if (m >= day && m < night) return [d, true];
+  if (tr > 0 && m >= night && m < night + tr) return [lerp(d, n, (m - night) / tr), false];
+  return [n, false];
+}
+
+function drawBar() {
+  let h = '';
+  for (let m = 0; m < 1440; m += 15) {
+    const [v, isDay] = levelAt(m);
+    h += `<div style="position:absolute;left:${m / 14.4}%;width:1.3%;bottom:0;height:${Math.max(6, v)}%;background:${isDay ? 'var(--day)' : 'var(--night)'}"></div>`;
+  }
+  const now = new Date(), nm = now.getHours() * 60 + now.getMinutes();
+  h += `<div style="position:absolute;left:${nm / 14.4}%;top:0;bottom:0;width:2px;background:var(--text);opacity:.6"></div>`;
+  $('bar').innerHTML = h;
+}
+
+async function refreshSun() {
+  const sc = draft.schedule;
+  try {
+    sun = await api(`/api/sun?lat=${encodeURIComponent(sc.lat)}&lon=${encodeURIComponent(sc.lon)}`);
+    $('sunrise').textContent = sun.error ? '—' : sun.sunrise; $('sunset').textContent = sun.error ? '—' : sun.sunset;
+    if (sun.error) msg(t.polar, 'err');
+  } catch (_) { sun = null; }
+  drawBar();
+}
+
+// --------------------------------------------------------------- eventos --
+$('brightness').oninput = (e) => {
+  draft.brightness = +e.target.value; update();
+  clearTimeout(briTimer);
+  briTimer = setTimeout(() => api('/api/brightness', { id: current.id, value: draft.brightness }).catch(() => {}), 120);
+};
+$('neverSleep').onchange = (e) => { draft.never_sleep = e.target.checked; update(); };
+$('sleepMinutes').onchange = (e) => { draft.sleep_minutes = Math.max(1, +e.target.value || 15); };
+$('swallow').onchange = (e) => { draft.swallow_wake_press = e.target.checked; };
+$('schedEnabled').onchange = (e) => { draft.schedule.enabled = e.target.checked; update(); };
+document.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { draft.schedule.mode = b.dataset.mode; update(); });
+$('city').onchange = (e) => {
+  const c = CITIES.find(([n]) => n.toLowerCase() === e.target.value.trim().toLowerCase());
+  draft.schedule.city = e.target.value.trim();
+  if (c) { draft.schedule.lat = c[1]; draft.schedule.lon = c[2]; $('lat').value = c[1]; $('lon').value = c[2]; refreshSun(); }
+};
+$('lat').onchange = (e) => { draft.schedule.lat = +e.target.value; refreshSun(); };
+$('lon').onchange = (e) => { draft.schedule.lon = +e.target.value; refreshSun(); };
+$('offset').onchange = (e) => { draft.schedule.offset_minutes = Math.round(+e.target.value || 0); drawBar(); };
+$('dayStart').onchange = (e) => { draft.schedule.day_start = e.target.value; drawBar(); };
+$('nightStart').onchange = (e) => { draft.schedule.night_start = e.target.value; drawBar(); };
+$('dayBri').oninput = (e) => { draft.schedule.day_brightness = +e.target.value; update(); };
+$('nightBri').oninput = (e) => { draft.schedule.night_brightness = +e.target.value; update(); };
+$('transition').onchange = (e) => { draft.schedule.transition_minutes = Math.max(0, Math.round(+e.target.value || 0)); drawBar(); };
+
+$('identify').onclick = () => api('/api/identify', { id: current.id }).catch((e) => msg(e.message, 'err'));
+$('save').onclick = async () => {
+  try {
+    await api('/api/save', { id: current.id, settings: draft });
+    current.settings = JSON.parse(JSON.stringify(draft)); saved = JSON.stringify(draft);
+    msg(t.saved, 'ok');
+  } catch (e) { msg(e.message, 'err'); }
+};
+$('close').onclick = () => { if (!dirty() || confirm(t.unsaved)) window.close(); };
+setInterval(drawBar, 60000);
+
+// ------------------------------------------------------------- arranque --
+(async () => {
+  try {
+    const st = await api('/api/state');
+    $('version').textContent = 'v' + st.version;
+    devices = st.devices;
+    if (!devices.length) { $('empty').textContent = t.empty; $('empty').classList.remove('hidden'); return; }
+    $('main').classList.remove('hidden');
+    select(devices[0].id);
+  } catch (e) {
+    $('empty').textContent = e.message; $('empty').classList.remove('hidden');
+  }
+})();
+</script>
+</body>
+</html>

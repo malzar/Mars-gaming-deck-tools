@@ -10,7 +10,7 @@ Aquí vive **MGDC**. Los otros plugins tienen su propio repo porque funcionan co
 |---|---|---|---|
 | [LHMonitor fancy](https://github.com/malzar/opendeck-lhmonitor-fancy) | Datos de [Libre Hardware Monitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) en tus teclas: CPU por núcleo, GPU, RAM, discos, red, ventiladores y placa base, rotando entre elementos | Estable (1.1) | MIT |
 | [Gestor de packs de iconos](https://github.com/malzar/opendeck-iconpacks) | Instala y desinstala packs de iconos de Stream Deck desde una ventana | Estable (1.3) | MIT |
-| [MGDC — Mars Gaming Deck Controller](mgdc/) | Un solo plugin para controlar MSD-ONE y MSD-PRO: brillo, apagado, brillo de día y noche según el sol, fondo del deck, animaciones de arranque y cierre | Fase 1: base unificada | GPL-3.0 |
+| [MGDC — Mars Gaming Deck Controller](mgdc/) | Un solo plugin para controlar MSD-ONE y MSD-PRO: brillo, apagado, brillo de día y noche según el sol, fondo del deck, animaciones de arranque y cierre | Fase 2: panel de ajustes | GPL-3.0 |
 
 ## Instalación
 

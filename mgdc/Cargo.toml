@@ -1,12 +1,14 @@
 [package]
 name = "mgdc"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "GPL-3.0"
 description = "MGDC (Mars Gaming Deck Controller): un solo plugin de OpenDeck para los decks MSD-ONE (familia AKP153) y MSD-PRO (familia AKP05 / N4)"
 repository = "https://github.com/malzar/Mars-gaming-deck-tools"
 
 [dependencies]
+axum = "0.7"
+chrono = "0.4"
 data-url = "0.3.1"
 dirs = "5"
 env_logger = "0.11"
@@ -16,6 +18,7 @@ log = "0.4.27"
 mirajazz = "0.16.2"
 openaction = "1.1.5"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tokio = { version = "1.44.2", features = ["full"] }
 tokio-util = { version = "0.7.15", features = ["full"] }
 toml = "0.8"
@@ -24,6 +27,8 @@ toml = "0.8"
 # Mantiene la misma API que usan los dispositivos AKP153.
 [patch.crates-io]
 mirajazz = { git = "https://github.com/ambiso/mirajazz.git" }
+# openaction 1.1.5 + evento "showSettingsInterface" (botón "Ajustes del plugin" de OpenDeck)
+openaction = { path = "vendor/openaction" }
 
 [profile.release]
 strip = true

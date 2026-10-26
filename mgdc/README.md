@@ -9,7 +9,7 @@ Un solo plugin de **OpenDeck** para controlar los dos decks de Mars Gaming y sus
 
 Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*. **No los tengas instalados a la vez**, porque se pelearían por los decks.
 
-> Estado: **fase 1** (base unificada). Funciona igual que los dos plugins originales. Siguientes fases: panel de ajustes (brillo, apagado de pantalla, brillo de día y de noche según el sol), fondo del deck y animaciones de arranque y cierre.
+> Estado: **fase 2** (panel de ajustes). Siguientes fases: fondo del deck y animaciones de arranque y cierre.
 
 ## Instalación
 
@@ -21,6 +21,25 @@ Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabo
 
 - **MSD-ONE y resto de la familia AKP153:** mantienen sus perfiles, porque se usa el mismo identificador de dispositivo (`99-…`).
 - **MSD-PRO y resto de la familia N4:** su identificador pasa de `n4-<serial>` a `99-<serial>`, así que OpenDeck lo verá como un deck nuevo. Para conservar los perfiles, con OpenDeck cerrado y **después de hacer una copia** de `%APPDATA%\opendeck\profiles`, renombra en esa carpeta lo que empiece por `n4-<serial>` a `99-<serial>`. Si algo no carga, restaura la copia y reconfigura el deck.
+
+## Ajustes
+
+En OpenDeck: **Plugins → MGDC → Ajustes del plugin**. Se abre una ventana con los decks conectados y, para cada uno:
+
+- **Brillo**, que se aplica al momento mientras mueves el deslizador.
+- **No apagar nunca la pantalla**, o apagarla tras X minutos sin usar el deck.
+- **La pulsación que enciende la pantalla no ejecuta la acción**, para no disparar nada sin querer al despertar el deck.
+- **Brillo de día y de noche**:
+  - *Según el sol*: amanecer y puesta calculados a diario a partir de la ciudad o las coordenadas, sin internet. Se puede desplazar el cambio unos minutos antes o después.
+  - *Horario fijo*: a qué hora empieza el día y a qué hora la noche.
+  - Brillo de día, brillo de noche y una transición suave de X minutos.
+- **Identificar deck**: hace parpadear el deck para saber cuál es.
+
+Los ajustes se guardan en `%APPDATA%\mgdc\settings.json`.
+
+Notas:
+- "Apagar la pantalla" pone el brillo a 0, así al despertar no hace falta volver a enviar las imágenes.
+- El brillo que pongas desde OpenDeck (por ejemplo con la acción *Device Brightness*) se guarda como brillo del deck. Si el horario de día y noche está activo, manda el horario.
 
 ## Compilar
 
