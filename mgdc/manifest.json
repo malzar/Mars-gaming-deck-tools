@@ -1,0 +1,16 @@
+{
+  "Name": "MGDC (Mars Gaming Deck Controller)",
+  "Description": "Un solo plugin para los decks Mars Gaming MSD-ONE (familia AKP153) y MSD-PRO (familia AKP05 / N4), y sus clones de Mirabox y Ajazz.",
+  "Author": "Malzar",
+  "Version": "0.1.0",
+  "PluginUUID": "com.malzar.mgdc",
+  "CodePathWin": "mgdc.exe",
+  "Icon": "assets/icon",
+  "Category": "Hardware",
+  "URL": "https://github.com/malzar/Mars-gaming-deck-tools",
+  "OS": [
+    { "Platform": "windows", "MinimumVersion": "10" }
+  ],
+  "Actions": [],
+  "DeviceNamespace": "99"
+}

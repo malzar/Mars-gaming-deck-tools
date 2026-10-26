@@ -5,3 +5,4 @@ dist/
 *.log.old
 .DS_Store
 Thumbs.db
+Cargo.lock.bak
