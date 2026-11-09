@@ -20,6 +20,8 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
   .wrap { max-width: 860px; margin: 0 auto; padding: 16px; }
+  .step { width: 30px; height: 30px; padding: 0; justify-content: center; font-size: 16px; line-height: 1; user-select: none; }
+  #calCard input[type=range] { width: 130px; }
   .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); overflow-x: auto; }
   .tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 14px; color: var(--muted); white-space: nowrap; }
   .tabs button:hover { background: transparent; color: var(--text); }
@@ -200,9 +202,9 @@
           <div>
             <div class="seg" id="calZone" style="margin-bottom:14px"></div>
             <div class="row">
-              <span data-t="calX"></span><span class="sl"><input type="range" id="calX" min="-20" max="20" step="1"><span id="calXV"></span></span>
-              <span data-t="calY"></span><span class="sl"><input type="range" id="calY" min="-20" max="20" step="1"><span id="calYV"></span></span>
-              <span data-t="calSize"></span><span class="sl"><input type="range" id="calS" min="60" max="120" step="1"><span id="calSV"></span></span>
+              <span data-t="calX"></span><span class="sl"><button class="step" data-step="calX" data-d="-1" aria-label="−">−</button><input type="range" id="calX" min="-20" max="20" step="1"><span id="calXV"></span><button class="step" data-step="calX" data-d="1" aria-label="+">+</button></span>
+              <span data-t="calY"></span><span class="sl"><button class="step" data-step="calY" data-d="-1" aria-label="−">−</button><input type="range" id="calY" min="-20" max="20" step="1"><span id="calYV"></span><button class="step" data-step="calY" data-d="1" aria-label="+">+</button></span>
+              <span data-t="calSize"></span><span class="sl"><button class="step" data-step="calS" data-d="-1" aria-label="−">−</button><input type="range" id="calS" min="60" max="120" step="1"><span id="calSV"></span><button class="step" data-step="calS" data-d="1" aria-label="+">+</button></span>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
               <button id="calTest" data-t="calTest"></button>
@@ -737,6 +739,19 @@ async function stopCal() {
   try { await api('/api/calibration/stop', { id: current.id }); } catch (_) {}
 }
 [['calX', 'dx'], ['calY', 'dy'], ['calS', 'size']].forEach(([el, key]) => $(el).oninput = (e) => { calAdj()[key] = +e.target.value; fillCal(); sendCal(calZone); });
+// Botones − / +: un paso por clic; si se mantiene pulsado, repite
+document.querySelectorAll('[data-step]').forEach((b) => {
+  let timer = null;
+  const step = () => {
+    const el = $(b.dataset.step), v = Math.min(+el.max, Math.max(+el.min, +el.value + +b.dataset.d));
+    if (v === +el.value) return;
+    el.value = v; el.dispatchEvent(new Event('input'));
+  };
+  const stop = () => { clearTimeout(timer); clearInterval(timer); timer = null; };
+  b.addEventListener('pointerdown', (e) => { e.preventDefault(); step(); timer = setTimeout(() => { timer = setInterval(step, 120); }, 400); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, stop));
+  b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); step(); } });
+});
 $('calReset').onclick = () => { draft.calibration[calZone] = { ...CAL0 }; calAdj(); fillCal(); sendCal(calZone); };
 $('calTest').onclick = () => { calAdj(); calOn = true; fillCal(); sendCal(''); };
 $('calStop').onclick = stopCal;
