@@ -179,6 +179,30 @@
         <p style="font-size:12px;color:var(--muted);margin:8px 0 0" data-t="bgNote"></p>
       </div>
 
+      <div class="card" id="calCard">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <p class="lbl" style="margin:0;flex:1" data-t="cal"></p>
+          <span id="calState" style="font-size:12px;color:var(--faint)"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start">
+          <div>
+            <div class="seg" id="calZone" style="margin-bottom:14px"><button data-z="keys" data-t="calKeys"></button><button data-z="side" data-t="calSide"></button></div>
+            <div class="row">
+              <span data-t="calX"></span><span class="sl"><input type="range" id="calX" min="-20" max="20" step="1"><span id="calXV"></span></span>
+              <span data-t="calY"></span><span class="sl"><input type="range" id="calY" min="-20" max="20" step="1"><span id="calYV"></span></span>
+              <span data-t="calSize"></span><span class="sl"><input type="range" id="calS" min="60" max="120" step="1"><span id="calSV"></span></span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+              <button id="calTest" data-t="calTest"></button>
+              <button id="calReset" data-t="calReset"></button>
+              <button id="calStop" data-t="calStop"></button>
+            </div>
+          </div>
+          <canvas id="calCv" width="120" height="120" style="width:120px;height:120px;border-radius:10px;border:4px solid #222;background:#000"></canvas>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:10px 0 0" data-t="calNote"></p>
+      </div>
+
       <div class="card">
         <p class="lbl" data-t="anims"></p>
         <p id="noAnims" class="hidden" style="font-size:13px;color:var(--muted);margin:0" data-t="noAnims"></p>
@@ -257,7 +281,7 @@ const TXT = {
     endWith: 'Al terminar el cierre, dejar', endBg: 'El fondo del deck', endOff: 'Pantalla apagada', colors: 'Colores', oneColor: 'Un color', palette: 'Paleta',
     kNone: 'Ninguna', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
     animNote: 'El cierre se ve al cerrar OpenDeck. Al apagar el PC puede no dar tiempo. Guarda para que se usen al arrancar y al cerrar.',
-    noGif: 'Elige primero un GIF', noAnims: 'Este deck no admite animaciones. Al cerrar OpenDeck las teclas se quedan en negro y se ve la imagen de fondo.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
+    noGif: 'Elige primero un GIF', cal: 'Calibración de iconos', calKeys: 'Teclas principales', calSide: 'Iconos laterales', calX: 'Horizontal', calY: 'Vertical', calSize: 'Tamaño', calTest: 'Poner imagen de prueba', calReset: 'Restablecer', calStop: 'Volver a mis iconos', calOn: 'Imagen de prueba en el deck', calNote: 'Pon la imagen de prueba y mueve los ajustes mirando el deck hasta que se vean todos los anillos. Guarda para aplicarlo a todos tus iconos.', noAnims: 'Este deck no admite animaciones. Al cerrar OpenDeck las teclas se quedan en negro y se ve la imagen de fondo.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
    
    
     newPal: 'Nueva paleta', name: 'Nombre', addColor: 'Añadir color', cancel: 'Cancelar', savePal: 'Guardar paleta', needName: 'Ponle un nombre', delPal: '¿Borrar la paleta',
@@ -282,7 +306,7 @@ const TXT = {
     endWith: 'After the shutdown animation, leave', endBg: 'The deck background', endOff: 'Screen off', colors: 'Colors', oneColor: 'One color', palette: 'Palette',
     kNone: 'None', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
     animNote: 'The shutdown animation plays when OpenDeck closes. When the PC shuts down there may not be time. Save to use them on startup and shutdown.',
-    noGif: 'Choose a GIF first', noAnims: 'This deck does not support animations. When OpenDeck closes the keys go black and the background image shows.', gifSaved: 'GIF saved', playing: 'Playing…',
+    noGif: 'Choose a GIF first', cal: 'Icon calibration', calKeys: 'Main keys', calSide: 'Side icons', calX: 'Horizontal', calY: 'Vertical', calSize: 'Size', calTest: 'Show test image', calReset: 'Reset', calStop: 'Back to my icons', calOn: 'Test image on the deck', calNote: 'Show the test image and move the controls while looking at the deck until every ring is visible. Save to apply it to all your icons.', noAnims: 'This deck does not support animations. When OpenDeck closes the keys go black and the background image shows.', gifSaved: 'GIF saved', playing: 'Playing…',
    
    
     newPal: 'New palette', name: 'Name', addColor: 'Add color', cancel: 'Cancel', savePal: 'Save palette', needName: 'Give it a name', delPal: 'Delete the palette',
@@ -333,7 +357,7 @@ function renderDevices() {
     <strong style="font-size:13px">${esc(d.name)}</strong><small>● ${t.connected}</small></button>`).join('');
   $('devices').querySelectorAll('[data-id]').forEach((b) => b.onclick = () => {
     if (dirty() && !confirm(t.unsaved)) return;
-    select(b.dataset.id);
+    stopCal(); select(b.dataset.id);
   });
 }
 
@@ -341,7 +365,7 @@ function select(id) {
   current = devices.find((d) => d.id === id) || devices[0];
   draft = JSON.parse(JSON.stringify(current.settings));
   saved = JSON.stringify(draft);
-  renderDevices(); fill(); refreshSun(); loadBackground();
+  calZone = 'keys'; renderDevices(); fill(); fillCal(); refreshSun(); loadBackground();
 }
 
 // ----------------------------------------------------------------- campos --
@@ -633,15 +657,65 @@ $('copyInfo').onclick = async () => {
   try { await navigator.clipboard.writeText(text); msg(t.copied, 'ok'); } catch (_) { msg(text); }
 };
 
+// ----------------------------------------------------------- calibración --
+let calZone = 'keys', calOn = false, calBusy = false, calPending = false;
+const CAL0 = { dx: 0, dy: 0, size: 100 };
+const calAdj = () => { draft.calibration = draft.calibration || { keys: { ...CAL0 }, side: { ...CAL0 } }; return draft.calibration[calZone]; };
+function calPattern() {
+  const c = document.createElement('canvas'); c.width = c.height = 85; const x = c.getContext('2d');
+  ['#ff2020', '#ff8a00', '#ffe600', '#20d040', '#00c8ff', '#3050ff', '#a040ff'].forEach((col, i) => { x.fillStyle = col; x.fillRect(i * 3, i * 3, 85 - i * 6, 85 - i * 6); });
+  x.fillStyle = '#000'; x.fillRect(21, 21, 43, 43); x.fillStyle = '#0c1440'; x.fillRect(24, 24, 37, 37);
+  x.fillStyle = '#fff'; x.beginPath(); x.moveTo(42.5, 30); x.lineTo(50, 46); x.lineTo(35, 46); x.fill(); x.fillRect(36, 48, 13, 4);
+  x.fillRect(0, 0, 5, 5); x.fillRect(80, 0, 5, 5); return c;
+}
+const CALPAT = calPattern();
+function drawCal() {
+  const a = calAdj(), x = $('calCv').getContext('2d'), k = 120 / 85, s = 85 * a.size / 100;
+  x.fillStyle = '#000'; x.fillRect(0, 0, 120, 120);
+  x.drawImage(CALPAT, ((85 - s) / 2 + a.dx) * k, ((85 - s) / 2 + a.dy) * k, s * k, s * k);
+}
+function fillCal() {
+  $('calCard').classList.toggle('hidden', current.protocol !== 1);
+  if (current.protocol !== 1) return;
+  const a = calAdj();
+  document.querySelectorAll('#calZone button').forEach((b) => b.classList.toggle('on', b.dataset.z === calZone));
+  $('calX').value = a.dx; $('calY').value = a.dy; $('calS').value = a.size;
+  $('calXV').textContent = a.dx + ' px'; $('calYV').textContent = a.dy + ' px'; $('calSV').textContent = a.size + ' %';
+  $('calState').textContent = calOn ? t.calOn : ''; $('calStop').disabled = !calOn;
+  drawCal();
+}
+// Manda al deck solo el último cambio, y no hasta que termine el anterior
+async function sendCal(zone) {
+  if (!calOn) return;
+  if (calBusy) { calPending = true; return; }
+  calBusy = true;
+  try { const r = await api('/api/calibration/test', { id: current.id, calibration: draft.calibration, zone }); if (r.error) throw new Error(r.error); }
+  catch (e) { msg(e.message, 'err'); }
+  calBusy = false;
+  if (calPending) { calPending = false; sendCal(calZone); }
+}
+async function stopCal() {
+  if (!calOn) return;
+  calOn = false; fillCal();
+  try { await api('/api/calibration/stop', { id: current.id }); } catch (_) {}
+}
+[['calX', 'dx'], ['calY', 'dy'], ['calS', 'size']].forEach(([el, key]) => $(el).oninput = (e) => { calAdj()[key] = +e.target.value; fillCal(); sendCal(calZone); });
+document.querySelectorAll('#calZone button').forEach((b) => b.onclick = () => { calZone = b.dataset.z; fillCal(); });
+$('calReset').onclick = () => { draft.calibration[calZone] = { ...CAL0 }; calAdj(); fillCal(); sendCal(calZone); };
+$('calTest').onclick = () => { calAdj(); calOn = true; fillCal(); sendCal(''); };
+$('calStop').onclick = stopCal;
+window.addEventListener('pagehide', () => { if (calOn) navigator.sendBeacon('/api/calibration/stop', new Blob([JSON.stringify({ id: current.id })], { type: 'application/json' })); });
+
 $('identify').onclick = () => api('/api/identify', { id: current.id }).catch((e) => msg(e.message, 'err'));
 $('save').onclick = async () => {
   try {
     await api('/api/save', { id: current.id, settings: draft });
     current.settings = JSON.parse(JSON.stringify(draft)); saved = JSON.stringify(draft);
+    await stopCal();
     msg(t.saved, 'ok');
   } catch (e) { msg(e.message, 'err'); }
 };
-$('close').onclick = () => { if (!dirty() || confirm(t.unsaved)) window.close(); };
+$('close').onclick = async () => { if (!dirty() || confirm(t.unsaved)) { await stopCal(); window.close(); } };
 setInterval(drawBar, 60000);
 
 // ------------------------------------------------------------- arranque --

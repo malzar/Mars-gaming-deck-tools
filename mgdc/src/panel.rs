@@ -22,7 +22,8 @@ use crate::{
     DEVICES, animation, background,
     family::Model,
     power, schedule,
-    settings::{self, Animation, DeviceSettings, Palette},
+    calibration,
+    settings::{self, Animation, Calibration, DeviceSettings, Palette},
 };
 
 /// Datos de cada deck conectado para mostrarlos en el panel
@@ -318,6 +319,91 @@ async fn reset(headers: HeaderMap, Json(body): Json<IdBody>) -> impl IntoRespons
     Json(json!({ "ok": ok })).into_response()
 }
 
+#[derive(Deserialize)]
+struct CalibrationBody {
+    id: String,
+    calibration: Calibration,
+    /// "keys", "side" o vacío (todas)
+    #[serde(default)]
+    zone: String,
+}
+
+/// Última vez que se usó la imagen de prueba en cada deck
+static CAL_LAST: LazyLock<RwLock<HashMap<String, std::time::Instant>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
+/// Por si se cierra el panel sin salir de la prueba: a los 5 minutos sin
+/// tocar nada, vuelven los iconos de OpenDeck
+fn cal_watchdog(id: String) {
+    tokio::spawn(async move {
+        let idle = std::time::Duration::from_secs(300);
+        tokio::time::sleep(idle).await;
+        let expired = CAL_LAST.read().await.get(&id).is_some_and(|t| t.elapsed() >= idle);
+        if expired && animation::busy(&id).await {
+            log::info!("Calibración de {id} abandonada: se vuelven a pintar los iconos");
+            animation::set_busy(&id, false).await;
+            rerender(&id).await;
+        }
+    });
+}
+
+/// Una calibración a la vez, para no saturar el MSD-ONE
+static CAL_LOCK: LazyLock<tokio::sync::Mutex<()>> = LazyLock::new(|| tokio::sync::Mutex::new(()));
+
+/// Pinta la imagen de prueba con la calibración indicada (sin guardar)
+async fn calibration_test(headers: HeaderMap, Json(body): Json<CalibrationBody>) -> impl IntoResponse {
+    if !origin_ok(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let _guard = CAL_LOCK.lock().await;
+    CAL_LAST.write().await.insert(body.id.clone(), std::time::Instant::now());
+    cal_watchdog(body.id.clone());
+    if !animation::busy(&body.id).await {
+        animation::set_busy(&body.id, true).await;
+        // Margen para que el deck termine lo que estuviera pintando
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    }
+
+    let pattern = calibration::test_pattern();
+    let result = async {
+        let devices = DEVICES.read().await;
+        let device = devices.get(&body.id).ok_or("El deck no está conectado")?;
+        let model = Model::from_vid_pid(device.vid, device.pid).ok_or("Modelo desconocido")?;
+        let (rows, cols) = model.grid();
+        let mut sent = 0u64;
+        for pos in 0..rows * cols {
+            let side = calibration::is_side(pos);
+            if (body.zone == "keys" && side) || (body.zone == "side" && !side) {
+                continue;
+            }
+            let img = calibration::apply(pattern.clone(), calibration::adjust_for(&body.calibration, pos));
+            model.draw_key(device, pos, img).await.map_err(|e| e.to_string())?;
+            sent += 1;
+        }
+        device.flush().await.map_err(|e| e.to_string())?;
+        // El MSD-ONE necesita respiro entre tandas
+        tokio::time::sleep(std::time::Duration::from_millis(80 + 16 * sent)).await;
+        Ok::<(), String>(())
+    }
+    .await;
+
+    match result {
+        Ok(()) => Json(json!({ "ok": true })).into_response(),
+        Err(e) => Json(json!({ "error": e })).into_response(),
+    }
+}
+
+/// Sale del modo de prueba y vuelve a pintar los iconos de OpenDeck
+async fn calibration_stop(headers: HeaderMap, Json(body): Json<IdBody>) -> impl IntoResponse {
+    if !origin_ok(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let _guard = CAL_LOCK.lock().await;
+    animation::set_busy(&body.id, false).await;
+    rerender(&body.id).await;
+    Json(json!({ "ok": true })).into_response()
+}
+
 pub async fn serve() {
     let app = Router::new()
         .route("/", get(|| async { Html(PANEL_HTML) }))
@@ -331,6 +417,8 @@ pub async fn serve() {
         .route("/api/animation/test", post(test_animation))
         .route("/api/animation/gif", get(get_gif).post(set_gif))
         .route("/api/reset", post(reset))
+        .route("/api/calibration/test", post(calibration_test))
+        .route("/api/calibration/stop", post(calibration_stop))
         .layer(DefaultBodyLimit::max(32 * 1024 * 1024));
 
     let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {

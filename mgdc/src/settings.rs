@@ -129,6 +129,32 @@ pub struct DeviceSettings {
     pub swallow_wake_press: bool,
     pub schedule: Schedule,
     pub animations: Animations,
+    /// Corrección de posición y tamaño de los iconos (MSD-ONE)
+    pub calibration: Calibration,
+}
+
+/// Desplazamiento (px) y tamaño (%) del icono dentro de los 85×85 px de la tecla
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct Adjust {
+    pub dx: i32,
+    pub dy: i32,
+    pub size: u32,
+}
+
+impl Default for Adjust {
+    fn default() -> Self {
+        Self { dx: 0, dy: 0, size: 100 }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct Calibration {
+    /// Las 15 teclas
+    pub keys: Adjust,
+    /// Los 3 iconos de la pantalla lateral
+    pub side: Adjust,
 }
 
 impl Default for DeviceSettings {
@@ -140,6 +166,7 @@ impl Default for DeviceSettings {
             swallow_wake_press: true,
             schedule: Schedule::default(),
             animations: Animations::default(),
+            calibration: Calibration::default(),
         }
     }
 }

@@ -355,6 +355,14 @@ pub async fn set_image(device: &Device, id: &str, evt: SetImageEvent) -> Result<
             let image = load_from_memory_with_format(body.as_slice(), image::ImageFormat::Jpeg)?;
             let kind = Kind::from_vid_pid(device.vid, device.pid).unwrap();
 
+            // MSD-ONE: corrección de posición y tamaño elegida en el panel
+            let image = if kind.protocol_version() == 1 {
+                let cal = crate::settings::for_device(id).await.calibration;
+                crate::calibration::apply(image, crate::calibration::adjust_for(&cal, position))
+            } else {
+                image
+            };
+
             device
                 .set_button_image(
                     opendeck_to_device(position),

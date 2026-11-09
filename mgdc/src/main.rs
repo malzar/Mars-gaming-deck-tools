@@ -26,6 +26,7 @@ use tokio::signal::unix::{SignalKind, signal};
 
 mod animation;
 mod background;
+mod calibration;
 mod config;
 mod device;
 mod family;
