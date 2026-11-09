@@ -23,6 +23,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            # Release creada a mano desde la web: solo se adjunta el zip
+            gh release upload "${GITHUB_REF_NAME}" dist/com.malzar.mgdc.sdPlugin.zip --clobber
+          else
           gh release create "${GITHUB_REF_NAME}" dist/com.malzar.mgdc.sdPlugin.zip \
             --title "MGDC ${GITHUB_REF_NAME#mgdc-v}" \
             --notes 'Plugin de OpenDeck para Mars Gaming MSD-ONE y MSD-PRO. Desinstala antes los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*, descarga `com.malzar.mgdc.sdPlugin.zip` y en OpenDeck: **Plugins → Install from file**, sin descomprimir. Reinicia OpenDeck. Ajustes en **Plugins → MGDC → Ajustes del plugin**.'
+          fi
