@@ -22,7 +22,6 @@ use crate::{
     DEVICES, animation, background,
     family::Model,
     power, schedule,
-    calibration,
     settings::{self, Animation, Calibration, DeviceSettings, Palette},
 };
 
@@ -36,6 +35,8 @@ pub struct DeviceInfo {
     /// Tamaño de la pantalla (ancho, alto) para el fondo
     pub screen: (u32, u32),
     pub key_size: u32,
+    /// Zonas de calibración: (nombre, [ancho, alto])
+    pub cal_zones: Vec<(String, [u32; 2])>,
     /// Admite animaciones de arranque y cierre
     pub animations: bool,
     pub vid: u16,
@@ -75,6 +76,7 @@ async fn state() -> impl IntoResponse {
             "screen": i.as_ref().map(|x| [x.screen.0, x.screen.1]),
             "has_background": background::saved_path(&id).is_some_and(|p| p.exists()),
             "key_size": i.as_ref().map(|x| x.key_size),
+            "cal_zones": i.as_ref().map(|x| x.cal_zones.clone()),
             "has_animations": i.as_ref().is_some_and(|x| x.animations),
             "vid_pid": i.as_ref().map(|x| format!("{:04X}:{:04X}", x.vid, x.pid)),
             "serial": i.as_ref().map(|x| x.serial.clone()),
@@ -364,25 +366,18 @@ async fn calibration_test(headers: HeaderMap, Json(body): Json<CalibrationBody>)
         tokio::time::sleep(std::time::Duration::from_millis(150)).await;
     }
 
-    let pattern = calibration::test_pattern();
     let result = async {
         let devices = DEVICES.read().await;
         let device = devices.get(&body.id).ok_or("El deck no está conectado")?;
         let model = Model::from_vid_pid(device.vid, device.pid).ok_or("Modelo desconocido")?;
-        let (rows, cols) = model.grid();
-        let mut sent = 0u64;
-        for pos in 0..rows * cols {
-            let side = calibration::is_side(pos);
-            if (body.zone == "keys" && side) || (body.zone == "side" && !side) {
-                continue;
-            }
-            let img = calibration::apply(pattern.clone(), calibration::adjust_for(&body.calibration, pos));
-            model.draw_key(device, pos, img).await.map_err(|e| e.to_string())?;
-            sent += 1;
-        }
+        let sent = model
+            .draw_calibration(device, &body.zone, &body.calibration)
+            .await
+            .map_err(|e| e.to_string())? as u64;
         device.flush().await.map_err(|e| e.to_string())?;
-        // El MSD-ONE necesita respiro entre tandas
-        tokio::time::sleep(std::time::Duration::from_millis(80 + 16 * sent)).await;
+        // Respiro entre tandas (el MSD-ONE lo necesita más)
+        let (base, per_key) = model.anim_pacing();
+        tokio::time::sleep(std::time::Duration::from_millis(base + per_key * sent)).await;
         Ok::<(), String>(())
     }
     .await;

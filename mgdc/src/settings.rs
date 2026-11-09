@@ -129,7 +129,7 @@ pub struct DeviceSettings {
     pub swallow_wake_press: bool,
     pub schedule: Schedule,
     pub animations: Animations,
-    /// Corrección de posición y tamaño de los iconos (MSD-ONE)
+    /// Corrección de posición y tamaño de los iconos
     pub calibration: Calibration,
 }
 
@@ -153,8 +153,10 @@ impl Default for Adjust {
 pub struct Calibration {
     /// Las 15 teclas
     pub keys: Adjust,
-    /// Los 3 iconos de la pantalla lateral
+    /// Los 3 iconos de la pantalla lateral (MSD-ONE)
     pub side: Adjust,
+    /// La pantalla de las ruedas (MSD-PRO)
+    pub strip: Adjust,
 }
 
 impl Default for DeviceSettings {

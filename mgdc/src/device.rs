@@ -109,6 +109,12 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
             layout: candidate.model.controls().to_string(),
             screen: background::screen_size(&candidate.model),
             key_size: candidate.model.key_size(),
+            cal_zones: candidate
+                .model
+                .calibration_zones()
+                .into_iter()
+                .map(|(z, (w, h))| (z.to_string(), [w, h]))
+                .collect(),
             animations: candidate.model.supports_animations(),
             vid: candidate.dev.vendor_id,
             pid: candidate.dev.product_id,

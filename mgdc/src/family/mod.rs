@@ -125,6 +125,68 @@ impl Model {
         }
     }
 
+    /// Zonas de calibración: (nombre, tamaño de la imagen)
+    pub fn calibration_zones(&self) -> Vec<(&'static str, (u32, u32))> {
+        match self {
+            Model::Akp153(k) if k.protocol_version() == 1 => vec![("keys", (85, 85)), ("side", (85, 85))],
+            Model::Akp153(_) => vec![("keys", (95, 95)), ("side", (82, 82))],
+            Model::Akp05(k) => {
+                let t = k.touch_image_format().size;
+                vec![("keys", (self.key_size(), self.key_size())), ("strip", (t.0 as u32, t.1 as u32))]
+            }
+        }
+    }
+
+    /// Pinta la imagen de prueba de calibración en una zona (sin enviarla)
+    pub async fn draw_calibration(
+        &self,
+        device: &Device,
+        zone: &str,
+        cal: &crate::settings::Calibration,
+    ) -> Result<usize, MirajazzError> {
+        use crate::calibration::{apply_sized, is_side, test_pattern_sized};
+        let mut sent = 0;
+        match self {
+            Model::Akp153(_) => {
+                let (rows, cols) = self.grid();
+                for pos in 0..rows * cols {
+                    let side = is_side(pos);
+                    if (zone == "keys" && side) || (zone == "side" && !side) {
+                        continue;
+                    }
+                    let size = if side { (82, 82) } else { (95, 95) };
+                    let size = if self.protocol_version() == 1 { (85, 85) } else { size };
+                    let adj = if side { cal.side } else { cal.keys };
+                    let img = apply_sized(test_pattern_sized(size.0, size.1), adj, size);
+                    self.draw_key(device, pos, img).await?;
+                    sent += 1;
+                }
+            }
+            Model::Akp05(k) => {
+                if zone != "strip" {
+                    let s = self.key_size();
+                    let img = apply_sized(test_pattern_sized(s, s), cal.keys, (s, s));
+                    for pos in 0..akp05::KEY_COUNT as u8 {
+                        self.draw_key(device, pos, img.clone()).await?;
+                        sent += 1;
+                    }
+                }
+                if zone != "keys" {
+                    let f = k.touch_image_format();
+                    let size = (f.size.0 as u32, f.size.1 as u32);
+                    let img = apply_sized(test_pattern_sized(size.0, size.1), cal.strip, size);
+                    for enc in 0..akp05::ENCODER_COUNT as u8 {
+                        device
+                            .set_button_image(akp05::map_position(enc, true)?, f.clone(), img.clone())
+                            .await?;
+                        sent += 1;
+                    }
+                }
+            }
+        }
+        Ok(sent)
+    }
+
     /// Pinta una tecla sin enviarla todavía (hay que llamar a `device.flush()`)
     pub async fn draw_key(
         &self,
@@ -206,7 +268,7 @@ impl Model {
 pub async fn set_image(device: &Device, id: &str, evt: SetImageEvent) -> Result<(), MirajazzError> {
     match Model::from_vid_pid(device.vid, device.pid) {
         Some(Model::Akp153(_)) => akp153::set_image(device, id, evt).await,
-        Some(Model::Akp05(_)) => akp05::set_image(device, evt).await,
+        Some(Model::Akp05(_)) => akp05::set_image(device, id, evt).await,
         None => Ok(()),
     }
 }

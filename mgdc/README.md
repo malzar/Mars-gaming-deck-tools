@@ -9,7 +9,7 @@ Un solo plugin de **OpenDeck** para controlar los dos decks de Mars Gaming y sus
 
 Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*. **No los tengas instalados a la vez**, porque se pelearían por los decks.
 
-> Estado: **0.5.0**. Novedad: calibración de iconos del MSD-ONE.
+> Estado: **0.6.0**. Novedades: panel organizado en pestañas y calibración de iconos también en el MSD-PRO.
 
 ## Instalación
 
@@ -24,7 +24,7 @@ Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabo
 
 ## Ajustes
 
-En OpenDeck: **Plugins → MGDC → Ajustes del plugin**. Se abre una ventana con los decks conectados y, para cada uno:
+En OpenDeck: **Plugins → MGDC → Ajustes del plugin**. Se abre una ventana con los decks conectados y, para cada uno, las pestañas *Pantalla*, *Fondo*, *Iconos*, *Animaciones* e *Información*:
 
 - **Brillo**, que se aplica al momento mientras mueves el deslizador.
 - **No apagar nunca la pantalla**, o apagarla tras X minutos sin usar el deck.
@@ -37,7 +37,7 @@ En OpenDeck: **Plugins → MGDC → Ajustes del plugin**. Se abre una ventana co
 - **Animaciones de arranque y de cierre**: ola, tecla a tecla, fundido o un GIF propio repartido por las teclas, con un color o una paleta. El cierre se ve al cerrar OpenDeck (al apagar el PC puede no dar tiempo). El MSD-ONE no las admite: al cerrar deja las teclas en negro con la imagen de fondo.
 - **Paletas**: 10 de serie (Arcoíris, Pastel, Aurora, Atardecer, Océano, Fuego, Synthwave, Hielo, Bosque y Neón) y las que crees tú.
 - **Información**: modelo, VID:PID, número de serie, protocolo y pantalla; botones para identificar, reiniciar el deck y copiar los datos.
-- **Calibración de iconos** (MSD-ONE): el firmware recorta y desplaza un poco cada icono. Con una imagen de prueba en el deck, se ajustan el desplazamiento y el tamaño de las teclas y de los 3 iconos laterales por separado.
+- **Calibración de iconos**: el firmware puede recortar y desplazar un poco cada icono. Con una imagen de prueba en el deck se ajustan el desplazamiento y el tamaño por zonas: teclas e iconos laterales en el MSD-ONE, teclas y pantalla de las ruedas en el MSD-PRO.
 - **Identificar deck**: hace parpadear el deck para saber cuál es.
 
 Los ajustes se guardan en `%APPDATA%\mgdc\settings.json` y una copia del último fondo de cada deck en `%APPDATA%\mgdc\backgrounds`.

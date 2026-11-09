@@ -364,7 +364,7 @@ pub fn map_position(mut position: u8, is_encoder: bool) -> Result<u8, MirajazzEr
 }
 
 /// Handles different combinations of "set image" event, including clearing the specific buttons and whole device
-pub async fn set_image(device: &Device, evt: SetImageEvent) -> Result<(), MirajazzError> {
+pub async fn set_image(device: &Device, id: &str, evt: SetImageEvent) -> Result<(), MirajazzError> {
     let is_encoder = evt.controller.as_deref() == Some("Encoder");
     match (evt.position, evt.image) {
         (Some(position), Some(image)) => {
@@ -399,6 +399,15 @@ pub async fn set_image(device: &Device, evt: SetImageEvent) -> Result<(), Miraja
             } else {
                 image
             };
+
+            // Corrección de posición y tamaño elegida en el panel
+            let cal = crate::settings::for_device(id).await.calibration;
+            let adj = if is_encoder { cal.strip } else { cal.keys };
+            let image = crate::calibration::apply_sized(
+                image,
+                adj,
+                (format.size.0 as u32, format.size.1 as u32),
+            );
 
             device.set_button_image(position, format, image).await?;
             device.flush().await?;
