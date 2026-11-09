@@ -9,7 +9,7 @@ Un solo plugin de **OpenDeck** para controlar los dos decks de Mars Gaming y sus
 
 Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*. **No los tengas instalados a la vez**, porque se pelearían por los decks.
 
-> Estado: **fase 4** (animaciones e información).
+> Estado: **0.4.2**, completo y probado con un MSD-ONE y un MSD-PRO.
 
 ## Instalación
 
@@ -58,7 +58,7 @@ Genera `dist\com.malzar.mgdc.sdPlugin.zip`.
 
 ## Configuración de LED y vibración (familia N4)
 
-Se mantiene el `config.toml` del plugin de ambiso. MGDC lo busca en `%APPDATA%\mgdc\config.toml` y, si no existe, en `%APPDATA%\opendeck-akp05\config.toml`. Más adelante pasará al panel de ajustes.
+Se mantiene el `config.toml` del plugin de ambiso. MGDC lo busca en `%APPDATA%\mgdc\config.toml` y, si no existe, en `%APPDATA%\opendeck-akp05\config.toml`. El MSD-PRO no tiene LED, así que en la práctica solo sirve para la vibración en los modelos que la tienen.
 
 ## Créditos y licencia
 
