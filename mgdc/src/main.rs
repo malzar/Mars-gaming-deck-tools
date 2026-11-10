@@ -33,6 +33,7 @@ mod family;
 mod led_config;
 mod panel;
 mod power;
+mod reveal;
 mod schedule;
 mod settings;
 mod watcher;
@@ -88,6 +89,11 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
         if animation::busy(&id).await {
             return Ok(());
         }
+
+        // Cascada de iconos en marcha: la imagen se pinta luego, a su turno
+        let Some(event) = reveal::intercept(event).await else {
+            return Ok(());
+        };
 
         if let Some(device) = DEVICES.read().await.get(&event.device) {
             family::set_image(device, &id, event)

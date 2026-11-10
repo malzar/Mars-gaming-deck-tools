@@ -64,6 +64,8 @@ pub enum AnimKind {
     Fade,
     /// GIF propio repartido por la cuadrícula de teclas
     Gif,
+    /// Tus propios iconos aparecen (o se van) tecla a tecla
+    Cascade,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

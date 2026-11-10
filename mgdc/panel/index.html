@@ -219,7 +219,6 @@
 
       <div class="card" data-tab="anims">
         <p class="lbl" data-t="anims"></p>
-        <p id="noAnims" class="hidden" style="font-size:13px;color:var(--muted);margin:0" data-t="noAnims"></p>
         <div id="animBody">
         <div class="arow">
           <span data-t="startup"></span>
@@ -240,12 +239,15 @@
           <span data-t="endWith"></span>
           <select id="endWith"><option value="bg" data-t="endBg"></option><option value="off" data-t="endOff"></option></select>
         </div>
+        <div id="colorsBox">
         <div class="arow" style="margin-bottom:8px">
           <span data-t="colors"></span>
           <div class="seg" id="animCm"><button data-cm="one" data-t="oneColor"></button><button data-cm="pal" data-t="palette"></button></div>
           <input type="color" id="animOne">
         </div>
         <div class="pl" id="animPal"></div>
+        </div>
+        <p id="oneNote" class="hidden" style="font-size:12px;color:var(--muted);margin:10px 0 0" data-t="oneNote"></p>
         <p style="font-size:12px;color:var(--muted);margin:10px 0 0" data-t="animNote"></p>
         </div>
       </div>
@@ -293,9 +295,9 @@ const TXT = {
     serial: 'Número de serie', screenI: 'Pantalla', keys: 'teclas', resetDeck: 'Reiniciar deck', copyInfo: 'Copiar datos', copied: 'Copiado',
     anims: 'Animaciones', startup: 'Arranque', shutdown: 'Cierre', test: 'Probar', pickGif: 'GIF…', duration: 'Duración',
     endWith: 'Al terminar el cierre, dejar', endBg: 'El fondo del deck', endOff: 'Pantalla apagada', colors: 'Colores', oneColor: 'Un color', palette: 'Paleta',
-    kNone: 'Ninguna', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
+    kNone: 'Ninguna', kCascade: 'Tus iconos', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
     animNote: 'El cierre se ve al cerrar OpenDeck. Al apagar el PC puede no dar tiempo. Guarda para que se usen al arrancar y al cerrar.',
-    noGif: 'Elige primero un GIF', tScreen: 'Pantalla', tBg: 'Fondo', tIcons: 'Iconos', tAnims: 'Animaciones', tInfo: 'Información', cal: 'Calibración de iconos', calKeys: 'Teclas', calSide: 'Iconos laterales', calStrip: 'Pantalla de las ruedas', calX: 'Horizontal', calY: 'Vertical', calSize: 'Tamaño', calTest: 'Poner imagen de prueba', calReset: 'Restablecer', calStop: 'Volver a mis iconos', calOn: 'Imagen de prueba en el deck', calNote: 'Pon la imagen de prueba y mueve los ajustes mirando el deck hasta que se vean los 7 anillos enteros, con el mismo grosor por los cuatro lados. Guarda para aplicarlo a todos tus iconos.', noAnims: 'Este deck no admite animaciones. Al cerrar OpenDeck las teclas se quedan en negro y se ve la imagen de fondo.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
+    noGif: 'Elige primero un GIF', tScreen: 'Pantalla', tBg: 'Fondo', tIcons: 'Iconos', tAnims: 'Animaciones', tInfo: 'Información', cal: 'Calibración de iconos', calKeys: 'Teclas', calSide: 'Iconos laterales', calStrip: 'Pantalla de las ruedas', calX: 'Horizontal', calY: 'Vertical', calSize: 'Tamaño', calTest: 'Poner imagen de prueba', calReset: 'Restablecer', calStop: 'Volver a mis iconos', calOn: 'Imagen de prueba en el deck', calNote: 'Pon la imagen de prueba y mueve los ajustes mirando el deck hasta que se vean los 7 anillos enteros, con el mismo grosor por los cuatro lados. Guarda para aplicarlo a todos tus iconos.', oneNote: 'En este deck solo está "Tus iconos": aparecen de uno en uno al arrancar y se van de uno en uno al cerrar, dejando la imagen de fondo.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
    
    
     newPal: 'Nueva paleta', name: 'Nombre', addColor: 'Añadir color', cancel: 'Cancelar', savePal: 'Guardar paleta', needName: 'Ponle un nombre', delPal: '¿Borrar la paleta',
@@ -318,9 +320,9 @@ const TXT = {
     serial: 'Serial number', screenI: 'Screen', keys: 'keys', resetDeck: 'Reset deck', copyInfo: 'Copy details', copied: 'Copied',
     anims: 'Animations', startup: 'Startup', shutdown: 'Shutdown', test: 'Test', pickGif: 'GIF…', duration: 'Duration',
     endWith: 'After the shutdown animation, leave', endBg: 'The deck background', endOff: 'Screen off', colors: 'Colors', oneColor: 'One color', palette: 'Palette',
-    kNone: 'None', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
+    kNone: 'None', kCascade: 'Your icons', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
     animNote: 'The shutdown animation plays when OpenDeck closes. When the PC shuts down there may not be time. Save to use them on startup and shutdown.',
-    noGif: 'Choose a GIF first', tScreen: 'Screen', tBg: 'Background', tIcons: 'Icons', tAnims: 'Animations', tInfo: 'Info', cal: 'Icon calibration', calKeys: 'Keys', calSide: 'Side icons', calStrip: 'Knob screen', calX: 'Horizontal', calY: 'Vertical', calSize: 'Size', calTest: 'Show test image', calReset: 'Reset', calStop: 'Back to my icons', calOn: 'Test image on the deck', calNote: 'Show the test image and move the controls while looking at the deck until every ring is visible. Save to apply it to all your icons.', noAnims: 'This deck does not support animations. When OpenDeck closes the keys go black and the background image shows.', gifSaved: 'GIF saved', playing: 'Playing…',
+    noGif: 'Choose a GIF first', tScreen: 'Screen', tBg: 'Background', tIcons: 'Icons', tAnims: 'Animations', tInfo: 'Info', cal: 'Icon calibration', calKeys: 'Keys', calSide: 'Side icons', calStrip: 'Knob screen', calX: 'Horizontal', calY: 'Vertical', calSize: 'Size', calTest: 'Show test image', calReset: 'Reset', calStop: 'Back to my icons', calOn: 'Test image on the deck', calNote: 'Show the test image and move the controls while looking at the deck until every ring is visible. Save to apply it to all your icons.', oneNote: 'This deck only has "Your icons": they appear one by one on startup and leave one by one on shutdown, showing the background image.', gifSaved: 'GIF saved', playing: 'Playing…',
    
    
     newPal: 'New palette', name: 'Name', addColor: 'Add color', cancel: 'Cancel', savePal: 'Save palette', needName: 'Give it a name', delPal: 'Delete the palette',
@@ -391,6 +393,9 @@ function renderDevices() {
 function select(id) {
   current = devices.find((d) => d.id === id) || devices[0];
   draft = JSON.parse(JSON.stringify(current.settings));
+  // Si el deck no admite la animación guardada, se muestra "Ninguna"
+  const kinds = current.anim_kinds || [];
+  for (const w of ['startup', 'shutdown']) if (kinds.length && !kinds.includes(draft.animations[w].kind)) draft.animations[w].kind = 'none';
   saved = JSON.stringify(draft);
   calZone = 'keys'; renderDevices(); fill(); fillCal(); refreshSun(); loadBackground();
 }
@@ -614,17 +619,22 @@ $('palSave').onclick = () => {
 };
 
 // --------------------------------------------------------- animaciones --
-const KINDS = ['none', 'wave', 'keys', 'fade', 'gif'], KLBL = { none: 'kNone', wave: 'kWave', keys: 'kKeys', fade: 'kFade', gif: 'kGif' };
+const KLBL = { none: 'kNone', cascade: 'kCascade', wave: 'kWave', keys: 'kKeys', fade: 'kFade', gif: 'kGif' };
 let gifWhich = null;
-document.querySelectorAll('[data-kind]').forEach((seg) => {
-  seg.innerHTML = KINDS.map((k) => `<button data-k="${k}">${t[KLBL[k]]}</button>`).join('');
-  seg.querySelectorAll('button').forEach((b) => b.onclick = () => { draft.animations[seg.dataset.kind].kind = b.dataset.k; updateAnims(); });
-});
+// Tipos de animación según el deck (el MSD-ONE solo admite la cascada)
+function renderKinds() {
+  const kinds = current.anim_kinds || ['none', 'cascade', 'wave', 'keys', 'fade', 'gif'];
+  document.querySelectorAll('[data-kind]').forEach((seg) => {
+    seg.innerHTML = kinds.map((k) => `<button data-k="${k}">${t[KLBL[k]]}</button>`).join('');
+    seg.querySelectorAll('button').forEach((b) => b.onclick = () => { draft.animations[seg.dataset.kind].kind = b.dataset.k; updateAnims(); });
+  });
+}
 const anims = () => draft.animations;
 function animColors(cols, pal) { for (const w of ['startup', 'shutdown']) { anims()[w].colors = cols.slice(); anims()[w].palette = pal; } }
 function fillAnims() {
-  const a = anims(), ok = current.has_animations !== false;
-  $('noAnims').classList.toggle('hidden', ok); $('animBody').classList.toggle('hidden', !ok);
+  const a = anims(), kinds = current.anim_kinds || [];
+  renderKinds();
+  $('oneNote').classList.toggle('hidden', !(kinds.length && !kinds.includes('wave')));
   $('animDur').value = a.startup.duration_ms / 1000; $('endWith').value = a.end_with_background ? 'bg' : 'off';
   $('animOne').value = a.startup.colors[0] || '#2f7de1';
   updateAnims();
@@ -641,6 +651,11 @@ function updateAnims() {
     document.querySelector(`[data-test=${w}]`).disabled = a[w].kind === 'none';
   }
   $('animDurV').textContent = (+$('animDur').value).toFixed(1).replace('.', ',') + ' s';
+  // Los colores solo cuentan en ola, tecla a tecla y fundido
+  const colorful = ['wave', 'keys', 'fade'].some((k) => a.startup.kind === k || a.shutdown.kind === k);
+  $('colorsBox').classList.toggle('hidden', !colorful);
+  const onlyOne = (current.anim_kinds || []).length && !(current.anim_kinds || []).includes('wave');
+  $('endWith').closest('.row').querySelectorAll('[data-t=endWith], #endWith').forEach((e) => e.classList.toggle('hidden', onlyOne));
   document.querySelectorAll('#animCm button').forEach((b) => b.classList.toggle('on', (b.dataset.cm === 'one') === isOne));
   $('animOne').classList.toggle('hidden', !isOne); $('animPal').classList.toggle('hidden', isOne);
   palGrid($('animPal'), () => anims().startup.palette, (n, c) => { animColors(c, n); });

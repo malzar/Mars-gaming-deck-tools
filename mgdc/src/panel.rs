@@ -21,7 +21,7 @@ use openaction::OUTBOUND_EVENT_MANAGER;
 use crate::{
     DEVICES, animation, background,
     family::Model,
-    power, schedule,
+    power, reveal, schedule,
     settings::{self, Animation, Calibration, DeviceSettings, Palette},
 };
 
@@ -37,8 +37,8 @@ pub struct DeviceInfo {
     pub key_size: u32,
     /// Zonas de calibración: (nombre, [ancho, alto])
     pub cal_zones: Vec<(String, [u32; 2])>,
-    /// Admite animaciones de arranque y cierre
-    pub animations: bool,
+    /// Tipos de animación que admite
+    pub anim_kinds: Vec<String>,
     pub vid: u16,
     pub pid: u16,
     pub serial: String,
@@ -77,7 +77,7 @@ async fn state() -> impl IntoResponse {
             "has_background": background::saved_path(&id).is_some_and(|p| p.exists()),
             "key_size": i.as_ref().map(|x| x.key_size),
             "cal_zones": i.as_ref().map(|x| x.cal_zones.clone()),
-            "has_animations": i.as_ref().is_some_and(|x| x.animations),
+            "anim_kinds": i.as_ref().map(|x| x.anim_kinds.clone()),
             "vid_pid": i.as_ref().map(|x| format!("{:04X}:{:04X}", x.vid, x.pid)),
             "serial": i.as_ref().map(|x| x.serial.clone()),
             "gifs": {
@@ -231,14 +231,27 @@ async fn test_animation(headers: HeaderMap, Json(body): Json<TestAnimBody>) -> i
     power::pause(&body.id, true).await;
     // Margen para que el deck termine lo que estuviera pintando
     tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    let mut cascade = None;
     let result = {
         let devices = DEVICES.read().await;
         match devices.get(&body.id) {
             None => Err("El deck no está conectado".to_string()),
             Some(device) => match Model::from_vid_pid(device.vid, device.pid) {
                 None => Err("Modelo desconocido".to_string()),
-                Some(model) if !model.supports_animations() => {
-                    Err("Este deck no admite animaciones".to_string())
+                Some(model) if !model.allows_animation(&body.animation.kind) => {
+                    Err("Este deck no admite esa animación".to_string())
+                }
+                Some(model) if body.animation.kind == settings::AnimKind::Cascade => {
+                    // Cierre: se van apagando; arranque: se borran y vuelven en cascada
+                    let r = if body.closing {
+                        let r = reveal::disappear(device, &model, body.animation.duration_ms).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+                        r
+                    } else {
+                        animation::clear(device).await
+                    };
+                    cascade = Some((model, body.animation.duration_ms));
+                    r.map_err(|e| e.to_string())
                 }
                 Some(model) => {
                     let r = animation::play(device, &model, &body.id, &body.animation, body.closing, level).await;
@@ -253,7 +266,16 @@ async fn test_animation(headers: HeaderMap, Json(body): Json<TestAnimBody>) -> i
     };
     animation::set_busy(&body.id, false).await;
     power::pause(&body.id, false).await;
-    rerender(&body.id).await;
+    match cascade {
+        // Los iconos vuelven en cascada y se espera a que termine
+        Some((model, ms)) if result.is_ok() => {
+            let task = tokio::spawn(reveal::appear(body.id.clone(), model, ms));
+            tokio::time::sleep(std::time::Duration::from_millis(60)).await;
+            rerender(&body.id).await;
+            let _ = task.await;
+        }
+        _ => rerender(&body.id).await,
+    }
     match result {
         Ok(()) => Json(json!({ "ok": true })).into_response(),
         Err(e) => Json(json!({ "error": e })).into_response(),

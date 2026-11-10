@@ -97,6 +97,29 @@ impl Model {
         !matches!(self, Model::Akp153(k) if k.protocol_version() == 1)
     }
 
+    /// Tipos de animación que admite este deck. El MSD-ONE solo aguanta la
+    /// cascada de iconos (una tecla cada vez, a su ritmo).
+    pub fn anim_kinds(&self) -> &'static [&'static str] {
+        if self.supports_animations() {
+            &["none", "cascade", "wave", "keys", "fade", "gif"]
+        } else {
+            &["none", "cascade"]
+        }
+    }
+
+    pub fn allows_animation(&self, kind: &crate::settings::AnimKind) -> bool {
+        use crate::settings::AnimKind;
+        matches!(kind, AnimKind::None | AnimKind::Cascade) || self.supports_animations()
+    }
+
+    /// Borra una tecla (o un trozo de la pantalla de las ruedas) sin enviarlo todavía
+    pub async fn clear_key(&self, device: &Device, position: u8, encoder: bool) -> Result<(), MirajazzError> {
+        match self {
+            Model::Akp153(_) => device.clear_button_image(akp153::opendeck_to_device(position)).await,
+            Model::Akp05(_) => device.clear_button_image(akp05::map_position(position, encoder)?).await,
+        }
+    }
+
     /// Ritmo de las animaciones: (pausa mínima tras cada envío, ms extra por
     /// tecla enviada). El MSD-ONE (protocolo 1) se atasca y llega a
     /// desconectarse si se le mandan tandas de teclas demasiado seguidas.

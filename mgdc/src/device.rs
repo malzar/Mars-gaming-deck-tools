@@ -13,7 +13,7 @@ use crate::{
     family::{CandidateDevice, Model},
     animation, background, led_config,
     panel::{DEVICE_INFO, DeviceInfo},
-    power, settings,
+    power, reveal, settings,
 };
 
 /// Inicializa un deck y atiende sus eventos hasta que se desconecta
@@ -72,7 +72,15 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
 
     // Animación de arranque, antes de que OpenDeck pinte las teclas
     let startup = settings::for_device(&candidate.id).await.animations.startup;
-    if startup.kind != settings::AnimKind::None && candidate.model.supports_animations() {
+    if startup.kind == settings::AnimKind::Cascade {
+        // Las imágenes que mande OpenDeck al registrar el deck saldrán en cascada
+        tokio::spawn(reveal::appear(
+            candidate.id.clone(),
+            candidate.model.clone(),
+            startup.duration_ms,
+        ));
+        tokio::time::sleep(Duration::from_millis(60)).await;
+    } else if startup.kind != settings::AnimKind::None && candidate.model.allows_animation(&startup.kind) {
         let level = power::screen_level(&candidate.id).await;
         if let Err(e) =
             animation::play(&device, &candidate.model, &candidate.id, &startup, false, level).await
@@ -115,7 +123,7 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
                 .into_iter()
                 .map(|(z, (w, h))| (z.to_string(), [w, h]))
                 .collect(),
-            animations: candidate.model.supports_animations(),
+            anim_kinds: candidate.model.anim_kinds().iter().map(|s| s.to_string()).collect(),
             vid: candidate.dev.vendor_id,
             pid: candidate.dev.product_id,
             serial: candidate.dev.serial_number.clone().unwrap_or_default(),
@@ -158,7 +166,15 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     if let Some(device) = DEVICES.read().await.get(&candidate.id) {
         // Cierre ordenado (se cierra OpenDeck): animación de cierre
         let anims = settings::for_device(&candidate.id).await.animations;
-        if token.is_cancelled() && !candidate.model.supports_animations() {
+        if token.is_cancelled() && anims.shutdown.kind == settings::AnimKind::Cascade {
+            let level = power::screen_level(&candidate.id).await;
+            if let Err(e) = reveal::disappear(device, &candidate.model, anims.shutdown.duration_ms).await {
+                log::warn!("Animación de cierre: {e}");
+            }
+            // El MSD-ONE siempre se queda con la imagen de fondo
+            let bg = anims.end_with_background || !candidate.model.supports_animations();
+            animation::finish_closing(device, bg, level).await.ok();
+        } else if token.is_cancelled() && !candidate.model.supports_animations() {
             // Sin animación: teclas en negro y se queda la imagen de fondo
             let level = power::screen_level(&candidate.id).await;
             animation::finish_closing(device, true, level).await.ok();
