@@ -273,22 +273,26 @@ fn random_color(rng: &mut Rng) -> [u8; 3] {
     [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8]
 }
 
-/// Estela: brillo de una tecla en los pasos siguientes a apagarse
-/// (encendida → 70 % → 30 % → 10 % → apagada)
-const TRAIL: [f32; 4] = [1.0, 0.7, 0.3, 0.1];
+/// Estela: brillo de una tecla en cada paso desde que deja de estar encendida.
+/// Con `n` pasos baja en línea recta hasta apagarse; con 3, por ejemplo:
+/// encendida → 75 % → 50 % → 25 % → apagada.
+pub fn trail_levels(n: u8) -> Vec<f32> {
+    let n = n.clamp(1, 10) as usize;
+    (0..=n).map(|i| 1.0 - i as f32 / (n + 1) as f32).collect()
+}
 
-/// Brillo de una tecla en un paso: `Some(i)` = `TRAIL[i]`, `None` = apagada
+/// Brillo de una tecla en un paso: `Some(i)` = `levels[i]`, `None` = apagada
 type Level = Option<usize>;
 
 /// Convierte los pasos (teclas encendidas) en cambios con estela: lo que deja
-/// de estar encendido va bajando por `TRAIL` un escalón por paso hasta
+/// de estar encendido va bajando un escalón de `levels` por paso hasta
 /// apagarse. Al final se añaden pasos para que también se apague la última estela.
-fn trail_frames(steps: &[Step]) -> Vec<Vec<(u8, Level)>> {
+fn trail_frames(steps: &[Step], levels: usize) -> Vec<Vec<(u8, Level)>> {
     use std::collections::HashMap;
     let mut state: HashMap<u8, usize> = HashMap::new();
     let mut frames = vec![];
     let empty: Step = vec![];
-    for step in steps.iter().chain(std::iter::repeat_n(&empty, TRAIL.len())) {
+    for step in steps.iter().chain(std::iter::repeat_n(&empty, levels)) {
         let mut changes = vec![];
         let mut keys: Vec<u8> = state.keys().copied().chain(step.iter().copied()).collect();
         keys.sort();
@@ -298,7 +302,7 @@ fn trail_frames(steps: &[Step]) -> Vec<Vec<(u8, Level)>> {
             let after = if step.contains(&k) {
                 Some(0)
             } else {
-                before.map(|i| i + 1).filter(|&i| i < TRAIL.len())
+                before.map(|i| i + 1).filter(|&i| i < levels)
             };
             if after != before {
                 changes.push((k, after));
@@ -328,7 +332,8 @@ async fn play_steps(
     let colors = palette(anim);
     let mut rng = Rng::new();
     let (base, per_key) = model.anim_pacing();
-    let frames = trail_frames(&steps);
+    let levels = trail_levels(anim.trail);
+    let frames = trail_frames(&steps, levels.len());
     let n = frames.len().max(1);
     let even = Duration::from_millis(anim.duration_ms.clamp(300, 8000) as u64) / n as u32;
     // Color de cada tecla encendida, para que su estela sea del mismo color
@@ -353,7 +358,7 @@ async fn play_steps(
                     model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
                 }
                 Some(t) => {
-                    let c = scale(*color_of.get(&k).unwrap_or(&[255, 255, 255]), TRAIL[t]);
+                    let c = scale(*color_of.get(&k).unwrap_or(&[255, 255, 255]), levels[t]);
                     model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
                 }
             }
@@ -366,7 +371,7 @@ async fn play_steps(
             tokio::time::sleep(rest).await;
         }
     }
-    log::info!("Animación {:?}: {n} pasos con estela (70/30/10 %), hasta {slowest} ms por paso", anim.kind);
+    log::info!("Animación {:?}: {n} pasos con estela de {} pasos, hasta {slowest} ms por paso", anim.kind, levels.len() - 1);
     Ok(n)
 }
 
@@ -512,17 +517,20 @@ mod tests {
         assert_eq!(a.len(), 7);
         let r = row_steps(&one);
         assert_eq!(r[1], vec![6, 7, 8, 9, 10, 11]);
-        // Estela de la flecha: el 6 pasa por 70 %, 30 %, 10 % y se apaga
-        let f = trail_frames(&a);
+        // Estela de 3 pasos en la flecha: el 6 pasa por 75 %, 50 %, 25 % y se apaga
+        assert_eq!(trail_levels(3), vec![1.0, 0.75, 0.5, 0.25]);
+        assert_eq!(trail_levels(1), vec![1.0, 0.5]);
+        assert_eq!(trail_levels(10).len(), 11);
+        let f = trail_frames(&a, 4);
         assert!(f[1].contains(&(6, Some(1))) && f[1].contains(&(7, Some(0))));
         assert!(f[2].contains(&(6, Some(2))) && f[2].contains(&(7, Some(1))) && f[2].contains(&(8, Some(0))));
         assert!(f[3].contains(&(6, Some(3))));
         assert!(f[4].contains(&(6, None)));
         // Al final: 5 y 17 bajan y se apagan
-        assert_eq!(f.len(), a.len() + TRAIL.len());
+        assert_eq!(f.len(), a.len() + 4);
         assert!(f.last().unwrap().iter().all(|&(_, l)| l.is_none()));
-        // Lineal: 0 → 70 % → 30 % → 10 % → apagado
-        let l = trail_frames(&chase_steps(&one));
+        // Lineal: 0 → 75 % → 50 % → 25 % → apagado
+        let l = trail_frames(&chase_steps(&one), 4);
         assert_eq!(l[0], vec![(0, Some(0))]);
         assert_eq!(l[1], vec![(0, Some(1)), (1, Some(0))]);
         assert_eq!(l[4], vec![(0, None), (1, Some(3)), (2, Some(2)), (3, Some(1)), (4, Some(0))]);

@@ -87,6 +87,8 @@ pub struct Animation {
     pub colors: Vec<String>,
     /// Cada tecla de un color al azar (en vez de los colores de arriba)
     pub random_colors: bool,
+    /// Pasos de estela (1-10): cuántos pasos tarda en apagarse una tecla
+    pub trail: u8,
 }
 
 impl Animation {
@@ -100,6 +102,7 @@ impl Animation {
                 "#00b3ff".into(), "#5a3dff".into(), "#d400ff".into(),
             ],
             random_colors: false,
+            trail: 3,
         }
     }
 }

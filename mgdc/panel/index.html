@@ -238,6 +238,8 @@
         <div class="row" style="margin-bottom:10px">
           <span data-t="duration"></span>
           <span class="sl"><input type="range" id="animDur" min="0.5" max="4" step="0.5"><span id="animDurV"></span></span>
+          <span data-t="trail"></span>
+          <span class="sl"><input type="range" id="animTrail" min="1" max="10" step="1"><span id="animTrailV"></span></span>
           <span data-t="endWith"></span>
           <select id="endWith"><option value="bg" data-t="endBg"></option><option value="off" data-t="endOff"></option></select>
         </div>
@@ -312,7 +314,7 @@ const TXT = {
     endWith: 'Al terminar el cierre, dejar', endBg: 'El fondo del deck', endOff: 'Pantalla apagada', colors: 'Colores', oneColor: 'Un color', palette: 'Paleta',
     kNone: 'Ninguna', kCascade: 'Tus iconos', kChase: 'Lineal', kArrow: 'Flecha', kRows: 'Filas', kRandom: 'Aleatorio', rndColors: 'Aleatorios', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
     animNote: 'El cierre se ve al cerrar OpenDeck. Al apagar el PC puede no dar tiempo. Guarda para que se usen al arrancar y al cerrar.',
-    noGif: 'Elige primero un GIF', tScreen: 'Pantalla', tBg: 'Fondo', tIcons: 'Iconos', tAnims: 'Animaciones', tInfo: 'Información', cal: 'Calibración de iconos', calKeys: 'Teclas', calSide: 'Iconos laterales', calStrip: 'Pantalla de las ruedas', calX: 'Horizontal', calY: 'Vertical', calSize: 'Tamaño', calTest: 'Poner imagen de prueba', calReset: 'Restablecer', calStop: 'Volver a mis iconos', calOn: 'Imagen de prueba en el deck', calNote: 'Pon la imagen de prueba: sale solo en la zona elegida y el resto se queda en negro. Mueve los ajustes mirando el deck hasta que se vean los 7 anillos enteros, con el mismo grosor por los cuatro lados, y los 4 cuadraditos blancos de las esquinas. Guarda para aplicarlo a todos tus iconos.', oneNote: 'En este deck solo están las animaciones que cambian pocas teclas a la vez: "Tus iconos", "Lineal", "Flecha", "Filas" y "Aleatorio". Al cerrar siempre deja la imagen de fondo.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
+    noGif: 'Elige primero un GIF', trail: 'Estela', tScreen: 'Pantalla', tBg: 'Fondo', tIcons: 'Iconos', tAnims: 'Animaciones', tInfo: 'Información', cal: 'Calibración de iconos', calKeys: 'Teclas', calSide: 'Iconos laterales', calStrip: 'Pantalla de las ruedas', calX: 'Horizontal', calY: 'Vertical', calSize: 'Tamaño', calTest: 'Poner imagen de prueba', calReset: 'Restablecer', calStop: 'Volver a mis iconos', calOn: 'Imagen de prueba en el deck', calNote: 'Pon la imagen de prueba: sale solo en la zona elegida y el resto se queda en negro. Mueve los ajustes mirando el deck hasta que se vean los 7 anillos enteros, con el mismo grosor por los cuatro lados, y los 4 cuadraditos blancos de las esquinas. Guarda para aplicarlo a todos tus iconos.', oneNote: 'En este deck solo están las animaciones que cambian pocas teclas a la vez: "Tus iconos", "Lineal", "Flecha", "Filas" y "Aleatorio". Al cerrar siempre deja la imagen de fondo.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
    
    
     newPal: 'Nueva paleta', name: 'Nombre', addColor: 'Añadir color', cancel: 'Cancelar', savePal: 'Guardar paleta', needName: 'Ponle un nombre', delPal: '¿Borrar la paleta',
@@ -337,7 +339,7 @@ const TXT = {
     endWith: 'After the shutdown animation, leave', endBg: 'The deck background', endOff: 'Screen off', colors: 'Colors', oneColor: 'One color', palette: 'Palette',
     kNone: 'None', kCascade: 'Your icons', kChase: 'Linear', kArrow: 'Arrow', kRows: 'Rows', kRandom: 'Random', rndColors: 'Random', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
     animNote: 'The shutdown animation plays when OpenDeck closes. When the PC shuts down there may not be time. Save to use them on startup and shutdown.',
-    noGif: 'Choose a GIF first', tScreen: 'Screen', tBg: 'Background', tIcons: 'Icons', tAnims: 'Animations', tInfo: 'Info', cal: 'Icon calibration', calKeys: 'Keys', calSide: 'Side icons', calStrip: 'Knob screen', calX: 'Horizontal', calY: 'Vertical', calSize: 'Size', calTest: 'Show test image', calReset: 'Reset', calStop: 'Back to my icons', calOn: 'Test image on the deck', calNote: 'Show the test image: it appears only on the selected zone and the rest goes black. Move the controls while looking at the deck until all 7 rings and the 4 white corner squares are visible, equally thick on every side. Save to apply it to all your icons.', oneNote: 'This deck only has the animations that change few keys at a time: "Your icons", "Linear", "Arrow", "Rows" and "Random". On shutdown it always leaves the background image.', gifSaved: 'GIF saved', playing: 'Playing…',
+    noGif: 'Choose a GIF first', trail: 'Trail', tScreen: 'Screen', tBg: 'Background', tIcons: 'Icons', tAnims: 'Animations', tInfo: 'Info', cal: 'Icon calibration', calKeys: 'Keys', calSide: 'Side icons', calStrip: 'Knob screen', calX: 'Horizontal', calY: 'Vertical', calSize: 'Size', calTest: 'Show test image', calReset: 'Reset', calStop: 'Back to my icons', calOn: 'Test image on the deck', calNote: 'Show the test image: it appears only on the selected zone and the rest goes black. Move the controls while looking at the deck until all 7 rings and the 4 white corner squares are visible, equally thick on every side. Save to apply it to all your icons.', oneNote: 'This deck only has the animations that change few keys at a time: "Your icons", "Linear", "Arrow", "Rows" and "Random". On shutdown it always leaves the background image.', gifSaved: 'GIF saved', playing: 'Playing…',
    
    
     newPal: 'New palette', name: 'Name', addColor: 'Add color', cancel: 'Cancel', savePal: 'Save palette', needName: 'Give it a name', delPal: 'Delete the palette',
@@ -652,6 +654,7 @@ function fillAnims() {
   const a = anims(), kinds = current.anim_kinds || [];
   renderKinds();
   $('oneNote').classList.toggle('hidden', !(kinds.length && !kinds.includes('wave')));
+  $('animTrail').value = a.startup.trail || 3;
   $('animDur').value = a.startup.duration_ms / 1000; $('endWith').value = a.end_with_background ? 'bg' : 'off';
   $('animOne').value = a.startup.colors[0] || '#2f7de1';
   updateAnims();
@@ -668,6 +671,11 @@ function updateAnims() {
     document.querySelector(`[data-test=${w}]`).disabled = a[w].kind === 'none';
   }
   $('animDurV').textContent = (+$('animDur').value).toFixed(1).replace('.', ',') + ' s';
+  // La estela solo cuenta en las animaciones de pasos
+  const trailed = ['chase', 'arrow', 'rows', 'random'].some((k) => a.startup.kind === k || a.shutdown.kind === k);
+  const tv = +$('animTrail').value;
+  $('animTrailV').textContent = tv + (tv === 1 ? ' paso' : ' pasos');
+  [$('animTrail').closest('.sl'), $('animTrail').closest('.row').querySelector('[data-t=trail]')].forEach((e) => e.classList.toggle('hidden', !trailed));
   // Los colores solo cuentan en ola, tecla a tecla y fundido
   const colorful = ['chase', 'arrow', 'rows', 'random', 'wave', 'keys', 'fade'].some((k) => a.startup.kind === k || a.shutdown.kind === k);
   $('colorsBox').classList.toggle('hidden', !colorful);
@@ -678,6 +686,7 @@ function updateAnims() {
   $('animOne').classList.toggle('hidden', cm !== 'one'); $('animPal').classList.toggle('hidden', cm !== 'pal');
   palGrid($('animPal'), () => anims().startup.palette, (n, c) => { animColors(c, n); });
 }
+$('animTrail').oninput = (e) => { anims().startup.trail = anims().shutdown.trail = +e.target.value; updateAnims(); };
 $('animDur').oninput = (e) => { anims().startup.duration_ms = anims().shutdown.duration_ms = Math.round(+e.target.value * 1000); updateAnims(); };
 $('endWith').onchange = (e) => { anims().end_with_background = e.target.value === 'bg'; };
 $('animOne').oninput = (e) => animColors([e.target.value], '');
