@@ -97,19 +97,23 @@ impl Model {
         !matches!(self, Model::Akp153(k) if k.protocol_version() == 1)
     }
 
-    /// Tipos de animación que admite este deck. El MSD-ONE solo aguanta la
-    /// cascada de iconos (una tecla cada vez, a su ritmo).
+    /// Tipos de animación que admite este deck. El MSD-ONE solo aguanta las
+    /// que cambian pocas teclas cada vez, a su ritmo (cascada, lineal, flecha,
+    /// filas y aleatorio).
     pub fn anim_kinds(&self) -> &'static [&'static str] {
         if self.supports_animations() {
-            &["none", "cascade", "wave", "keys", "fade", "gif"]
+            &["none", "cascade", "chase", "arrow", "rows", "random", "wave", "keys", "fade", "gif"]
         } else {
-            &["none", "cascade"]
+            &["none", "cascade", "chase", "arrow", "rows", "random"]
         }
     }
 
     pub fn allows_animation(&self, kind: &crate::settings::AnimKind) -> bool {
         use crate::settings::AnimKind;
-        matches!(kind, AnimKind::None | AnimKind::Cascade) || self.supports_animations()
+        matches!(
+            kind,
+            AnimKind::None | AnimKind::Cascade | AnimKind::Chase | AnimKind::Arrow | AnimKind::Rows | AnimKind::Random
+        ) || self.supports_animations()
     }
 
     /// Borra una tecla (o un trozo de la pantalla de las ruedas) sin enviarlo todavía
@@ -160,7 +164,9 @@ impl Model {
         }
     }
 
-    /// Pinta la imagen de prueba de calibración en una zona (sin enviarla)
+    /// Pinta la imagen de prueba de calibración en una zona (sin enviarla).
+    /// Las pantallas de las otras zonas se quedan en negro, para ver solo la
+    /// zona que se está calibrando. Con `zone` vacío se pintan todas.
     pub async fn draw_calibration(
         &self,
         device: &Device,
@@ -168,46 +174,84 @@ impl Model {
         cal: &crate::settings::Calibration,
     ) -> Result<usize, MirajazzError> {
         use crate::calibration::{apply_sized, is_side, test_pattern_sized};
+        let show = |z: &str| zone.is_empty() || zone == z;
         let mut sent = 0;
         match self {
             Model::Akp153(_) => {
                 let (rows, cols) = self.grid();
                 for pos in 0..rows * cols {
                     let side = is_side(pos);
-                    if (zone == "keys" && side) || (zone == "side" && !side) {
-                        continue;
+                    if !show(if side { "side" } else { "keys" }) {
+                        self.clear_key(device, pos, false).await?;
+                    } else {
+                        let size = if self.protocol_version() == 1 {
+                            (85, 85)
+                        } else if side {
+                            (82, 82)
+                        } else {
+                            (95, 95)
+                        };
+                        let adj = if side { cal.side } else { cal.keys };
+                        let img = apply_sized(test_pattern_sized(size.0, size.1), adj, size);
+                        self.draw_key(device, pos, img).await?;
                     }
-                    let size = if side { (82, 82) } else { (95, 95) };
-                    let size = if self.protocol_version() == 1 { (85, 85) } else { size };
-                    let adj = if side { cal.side } else { cal.keys };
-                    let img = apply_sized(test_pattern_sized(size.0, size.1), adj, size);
-                    self.draw_key(device, pos, img).await?;
                     sent += 1;
                 }
             }
             Model::Akp05(k) => {
-                if zone != "strip" {
-                    let s = self.key_size();
-                    let img = apply_sized(test_pattern_sized(s, s), cal.keys, (s, s));
-                    for pos in 0..akp05::KEY_COUNT as u8 {
-                        self.draw_key(device, pos, img.clone()).await?;
-                        sent += 1;
+                let (rows, cols) = self.grid();
+                let s = self.key_size();
+                let key_img = apply_sized(test_pattern_sized(s, s), cal.keys, (s, s));
+                for pos in 0..rows * cols {
+                    if show("keys") {
+                        self.draw_key(device, pos, key_img.clone()).await?;
+                    } else {
+                        self.clear_key(device, pos, false).await?;
                     }
+                    sent += 1;
                 }
-                if zone != "keys" {
-                    let f = k.touch_image_format();
-                    let size = (f.size.0 as u32, f.size.1 as u32);
-                    let img = apply_sized(test_pattern_sized(size.0, size.1), cal.strip, size);
-                    for enc in 0..akp05::ENCODER_COUNT as u8 {
+                let f = k.touch_image_format();
+                let size = (f.size.0 as u32, f.size.1 as u32);
+                let strip_img = apply_sized(test_pattern_sized(size.0, size.1), cal.strip, size);
+                for enc in 0..akp05::ENCODER_COUNT as u8 {
+                    if show("strip") {
                         device
-                            .set_button_image(akp05::map_position(enc, true)?, f.clone(), img.clone())
+                            .set_button_image(akp05::map_position(enc, true)?, f.clone(), strip_img.clone())
                             .await?;
-                        sent += 1;
+                    } else {
+                        self.clear_key(device, enc, true).await?;
                     }
+                    sent += 1;
                 }
             }
         }
         Ok(sent)
+    }
+
+    /// Aplica la calibración guardada a una imagen antes de pintarla.
+    /// `encoder` = es un trozo de la pantalla de las ruedas (MSD-PRO).
+    pub fn calibrate(
+        &self,
+        cal: &crate::settings::Calibration,
+        position: u8,
+        encoder: bool,
+        image: image::DynamicImage,
+    ) -> image::DynamicImage {
+        use crate::calibration::{adjust_for, apply_sized};
+        match self {
+            Model::Akp153(k) => {
+                let f = akp153::get_image_format_for_key(k, position);
+                apply_sized(image, adjust_for(cal, position), (f.size.0 as u32, f.size.1 as u32))
+            }
+            Model::Akp05(k) if encoder => {
+                let f = k.touch_image_format();
+                apply_sized(image, cal.strip, (f.size.0 as u32, f.size.1 as u32))
+            }
+            Model::Akp05(_) => {
+                let s = self.key_size();
+                apply_sized(image, cal.keys, (s, s))
+            }
+        }
     }
 
     /// Pinta una tecla sin enviarla todavía (hay que llamar a `device.flush()`)

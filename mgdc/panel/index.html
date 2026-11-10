@@ -72,6 +72,7 @@
   .arow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; }
   .arow > span:first-child { width: 58px; }
   [data-kind] button { padding: 6px 9px; }
+  [data-kind] { flex-wrap: wrap; }
   .arow [data-test] { margin-left: auto; }
   .thumb { height: 30px; border-radius: 4px; border: 1px solid var(--border); }
 </style>
@@ -243,7 +244,7 @@
         <div id="colorsBox">
         <div class="arow" style="margin-bottom:8px">
           <span data-t="colors"></span>
-          <div class="seg" id="animCm"><button data-cm="one" data-t="oneColor"></button><button data-cm="pal" data-t="palette"></button></div>
+          <div class="seg" id="animCm"><button data-cm="one" data-t="oneColor"></button><button data-cm="pal" data-t="palette"></button><button data-cm="rnd" data-t="rndColors"></button></div>
           <input type="color" id="animOne">
         </div>
         <div class="pl" id="animPal"></div>
@@ -309,9 +310,9 @@ const TXT = {
     serial: 'Número de serie', screenI: 'Pantalla', keys: 'teclas', resetDeck: 'Reiniciar deck', copyInfo: 'Copiar datos', copied: 'Copiado',
     anims: 'Animaciones', startup: 'Arranque', shutdown: 'Cierre', test: 'Probar', pickGif: 'GIF…', duration: 'Duración',
     endWith: 'Al terminar el cierre, dejar', endBg: 'El fondo del deck', endOff: 'Pantalla apagada', colors: 'Colores', oneColor: 'Un color', palette: 'Paleta',
-    kNone: 'Ninguna', kCascade: 'Tus iconos', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
+    kNone: 'Ninguna', kCascade: 'Tus iconos', kChase: 'Lineal', kArrow: 'Flecha', kRows: 'Filas', kRandom: 'Aleatorio', rndColors: 'Aleatorios', kWave: 'Ola', kKeys: 'Tecla a tecla', kFade: 'Fundido', kGif: 'GIF propio',
     animNote: 'El cierre se ve al cerrar OpenDeck. Al apagar el PC puede no dar tiempo. Guarda para que se usen al arrancar y al cerrar.',
-    noGif: 'Elige primero un GIF', tScreen: 'Pantalla', tBg: 'Fondo', tIcons: 'Iconos', tAnims: 'Animaciones', tInfo: 'Información', cal: 'Calibración de iconos', calKeys: 'Teclas', calSide: 'Iconos laterales', calStrip: 'Pantalla de las ruedas', calX: 'Horizontal', calY: 'Vertical', calSize: 'Tamaño', calTest: 'Poner imagen de prueba', calReset: 'Restablecer', calStop: 'Volver a mis iconos', calOn: 'Imagen de prueba en el deck', calNote: 'Pon la imagen de prueba y mueve los ajustes mirando el deck hasta que se vean los 7 anillos enteros, con el mismo grosor por los cuatro lados. Guarda para aplicarlo a todos tus iconos.', oneNote: 'En este deck solo está "Tus iconos": aparecen de uno en uno al arrancar y se van de uno en uno al cerrar, dejando la imagen de fondo.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
+    noGif: 'Elige primero un GIF', tScreen: 'Pantalla', tBg: 'Fondo', tIcons: 'Iconos', tAnims: 'Animaciones', tInfo: 'Información', cal: 'Calibración de iconos', calKeys: 'Teclas', calSide: 'Iconos laterales', calStrip: 'Pantalla de las ruedas', calX: 'Horizontal', calY: 'Vertical', calSize: 'Tamaño', calTest: 'Poner imagen de prueba', calReset: 'Restablecer', calStop: 'Volver a mis iconos', calOn: 'Imagen de prueba en el deck', calNote: 'Pon la imagen de prueba: sale solo en la zona elegida y el resto se queda en negro. Mueve los ajustes mirando el deck hasta que se vean los 7 anillos enteros, con el mismo grosor por los cuatro lados, y los 4 cuadraditos blancos de las esquinas. Guarda para aplicarlo a todos tus iconos.', oneNote: 'En este deck solo están las animaciones que cambian pocas teclas a la vez: "Tus iconos", "Lineal", "Flecha", "Filas" y "Aleatorio". Al cerrar siempre deja la imagen de fondo.', gifSaved: 'GIF guardado', playing: 'Reproduciendo…',
    
    
     newPal: 'Nueva paleta', name: 'Nombre', addColor: 'Añadir color', cancel: 'Cancelar', savePal: 'Guardar paleta', needName: 'Ponle un nombre', delPal: '¿Borrar la paleta',
@@ -334,9 +335,9 @@ const TXT = {
     serial: 'Serial number', screenI: 'Screen', keys: 'keys', resetDeck: 'Reset deck', copyInfo: 'Copy details', copied: 'Copied',
     anims: 'Animations', startup: 'Startup', shutdown: 'Shutdown', test: 'Test', pickGif: 'GIF…', duration: 'Duration',
     endWith: 'After the shutdown animation, leave', endBg: 'The deck background', endOff: 'Screen off', colors: 'Colors', oneColor: 'One color', palette: 'Palette',
-    kNone: 'None', kCascade: 'Your icons', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
+    kNone: 'None', kCascade: 'Your icons', kChase: 'Linear', kArrow: 'Arrow', kRows: 'Rows', kRandom: 'Random', rndColors: 'Random', kWave: 'Wave', kKeys: 'Key by key', kFade: 'Fade', kGif: 'Custom GIF',
     animNote: 'The shutdown animation plays when OpenDeck closes. When the PC shuts down there may not be time. Save to use them on startup and shutdown.',
-    noGif: 'Choose a GIF first', tScreen: 'Screen', tBg: 'Background', tIcons: 'Icons', tAnims: 'Animations', tInfo: 'Info', cal: 'Icon calibration', calKeys: 'Keys', calSide: 'Side icons', calStrip: 'Knob screen', calX: 'Horizontal', calY: 'Vertical', calSize: 'Size', calTest: 'Show test image', calReset: 'Reset', calStop: 'Back to my icons', calOn: 'Test image on the deck', calNote: 'Show the test image and move the controls while looking at the deck until every ring is visible. Save to apply it to all your icons.', oneNote: 'This deck only has "Your icons": they appear one by one on startup and leave one by one on shutdown, showing the background image.', gifSaved: 'GIF saved', playing: 'Playing…',
+    noGif: 'Choose a GIF first', tScreen: 'Screen', tBg: 'Background', tIcons: 'Icons', tAnims: 'Animations', tInfo: 'Info', cal: 'Icon calibration', calKeys: 'Keys', calSide: 'Side icons', calStrip: 'Knob screen', calX: 'Horizontal', calY: 'Vertical', calSize: 'Size', calTest: 'Show test image', calReset: 'Reset', calStop: 'Back to my icons', calOn: 'Test image on the deck', calNote: 'Show the test image: it appears only on the selected zone and the rest goes black. Move the controls while looking at the deck until all 7 rings and the 4 white corner squares are visible, equally thick on every side. Save to apply it to all your icons.', oneNote: 'This deck only has the animations that change few keys at a time: "Your icons", "Linear", "Arrow", "Rows" and "Random". On shutdown it always leaves the background image.', gifSaved: 'GIF saved', playing: 'Playing…',
    
    
     newPal: 'New palette', name: 'Name', addColor: 'Add color', cancel: 'Cancel', savePal: 'Save palette', needName: 'Give it a name', delPal: 'Delete the palette',
@@ -635,7 +636,7 @@ $('palSave').onclick = () => {
 };
 
 // --------------------------------------------------------- animaciones --
-const KLBL = { none: 'kNone', cascade: 'kCascade', wave: 'kWave', keys: 'kKeys', fade: 'kFade', gif: 'kGif' };
+const KLBL = { none: 'kNone', cascade: 'kCascade', chase: 'kChase', arrow: 'kArrow', rows: 'kRows', random: 'kRandom', wave: 'kWave', keys: 'kKeys', fade: 'kFade', gif: 'kGif' };
 let gifWhich = null;
 // Tipos de animación según el deck (el MSD-ONE solo admite la cascada)
 function renderKinds() {
@@ -646,7 +647,7 @@ function renderKinds() {
   });
 }
 const anims = () => draft.animations;
-function animColors(cols, pal) { for (const w of ['startup', 'shutdown']) { anims()[w].colors = cols.slice(); anims()[w].palette = pal; } }
+function animColors(cols, pal, rnd = false) { for (const w of ['startup', 'shutdown']) { anims()[w].colors = cols.slice(); anims()[w].palette = pal; anims()[w].random_colors = rnd; } }
 function fillAnims() {
   const a = anims(), kinds = current.anim_kinds || [];
   renderKinds();
@@ -656,7 +657,7 @@ function fillAnims() {
   updateAnims();
 }
 function updateAnims() {
-  const a = anims(), isOne = a.startup.palette === '';
+  const a = anims(), isRnd = !!a.startup.random_colors, isOne = !isRnd && a.startup.palette === '';
   for (const w of ['startup', 'shutdown']) {
     document.querySelectorAll(`[data-kind=${w}] button`).forEach((b) => b.classList.toggle('on', b.dataset.k === a[w].kind));
     const box = document.querySelector(`[data-gif=${w}]`), img = box.querySelector('img');
@@ -668,12 +669,13 @@ function updateAnims() {
   }
   $('animDurV').textContent = (+$('animDur').value).toFixed(1).replace('.', ',') + ' s';
   // Los colores solo cuentan en ola, tecla a tecla y fundido
-  const colorful = ['wave', 'keys', 'fade'].some((k) => a.startup.kind === k || a.shutdown.kind === k);
+  const colorful = ['chase', 'arrow', 'rows', 'random', 'wave', 'keys', 'fade'].some((k) => a.startup.kind === k || a.shutdown.kind === k);
   $('colorsBox').classList.toggle('hidden', !colorful);
   const onlyOne = (current.anim_kinds || []).length && !(current.anim_kinds || []).includes('wave');
   $('endWith').closest('.row').querySelectorAll('[data-t=endWith], #endWith').forEach((e) => e.classList.toggle('hidden', onlyOne));
-  document.querySelectorAll('#animCm button').forEach((b) => b.classList.toggle('on', (b.dataset.cm === 'one') === isOne));
-  $('animOne').classList.toggle('hidden', !isOne); $('animPal').classList.toggle('hidden', isOne);
+  const cm = isRnd ? 'rnd' : isOne ? 'one' : 'pal';
+  document.querySelectorAll('#animCm button').forEach((b) => b.classList.toggle('on', b.dataset.cm === cm));
+  $('animOne').classList.toggle('hidden', cm !== 'one'); $('animPal').classList.toggle('hidden', cm !== 'pal');
   palGrid($('animPal'), () => anims().startup.palette, (n, c) => { animColors(c, n); });
 }
 $('animDur').oninput = (e) => { anims().startup.duration_ms = anims().shutdown.duration_ms = Math.round(+e.target.value * 1000); updateAnims(); };
@@ -681,6 +683,7 @@ $('endWith').onchange = (e) => { anims().end_with_background = e.target.value ==
 $('animOne').oninput = (e) => animColors([e.target.value], '');
 document.querySelectorAll('#animCm button').forEach((b) => b.onclick = () => {
   if (b.dataset.cm === 'one') animColors([$('animOne').value], '');
+  else if (b.dataset.cm === 'rnd') animColors(BUILTIN[0][1], '', true);
   else { const p = BUILTIN[0]; animColors(p[1], p[0]); }
   updateAnims();
 });
@@ -732,7 +735,9 @@ function calPattern(w, h) {
   x.fillStyle = '#000'; x.fillRect(7 * r, 7 * r, w - 14 * r, h - 14 * r); x.fillStyle = '#0c1440'; x.fillRect(8 * r, 8 * r, w - 16 * r, h - 16 * r);
   const cx = w / 2, top = h / 2 - 12 * u;
   x.fillStyle = '#fff'; x.beginPath(); x.moveTo(cx, top); x.lineTo(cx + 8 * u, top + 16 * u); x.lineTo(cx - 8 * u, top + 16 * u); x.fill();
-  x.fillRect(cx - 6 * u, h / 2 + 6 * u, 12 * u, 4 * u); x.fillRect(0, 0, 5 * u, 5 * u); x.fillRect(w - 5 * u, 0, 5 * u, 5 * u); return c;
+  x.fillRect(cx - 6 * u, h / 2 + 6 * u, 12 * u, 4 * u);
+  for (const [px, py] of [[0, 0], [w - 5 * u, 0], [0, h - 5 * u], [w - 5 * u, h - 5 * u]]) x.fillRect(px, py, 5 * u, 5 * u);
+  return c;
 }
 function drawCal() {
   const [w, h] = calSize(), a = calAdj(), cv = $('calCv'), k = 120 / Math.max(w, h);
@@ -747,7 +752,7 @@ function fillCal() {
   if (!zs.length) return;
   if (!zs.some(([z]) => z === calZone)) calZone = zs[0][0];
   $('calZone').innerHTML = zs.map(([z]) => `<button data-z="${z}" class="${z === calZone ? 'on' : ''}">${t[ZLBL[z]] || z}</button>`).join('');
-  $('calZone').querySelectorAll('button').forEach((b) => b.onclick = () => { calZone = b.dataset.z; fillCal(); });
+  $('calZone').querySelectorAll('button').forEach((b) => b.onclick = () => { calZone = b.dataset.z; fillCal(); sendCal(calZone); });
   const a = calAdj();
   $('calX').value = a.dx; $('calY').value = a.dy; $('calS').value = a.size;
   $('calXV').textContent = a.dx + ' px'; $('calYV').textContent = a.dy + ' px'; $('calSV').textContent = a.size + ' %';
@@ -784,7 +789,7 @@ document.querySelectorAll('[data-step]').forEach((b) => {
   b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); step(); } });
 });
 $('calReset').onclick = () => { draft.calibration[calZone] = { ...CAL0 }; calAdj(); fillCal(); sendCal(calZone); };
-$('calTest').onclick = () => { calAdj(); calOn = true; fillCal(); sendCal(''); };
+$('calTest').onclick = () => { calAdj(); calOn = true; fillCal(); sendCal(calZone); };
 $('calStop').onclick = stopCal;
 window.addEventListener('pagehide', () => { if (calOn) navigator.sendBeacon('/api/calibration/stop', new Blob([JSON.stringify({ id: current.id })], { type: 'application/json' })); });
 

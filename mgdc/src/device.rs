@@ -174,18 +174,18 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
             // El MSD-ONE siempre se queda con la imagen de fondo
             let bg = anims.end_with_background || !candidate.model.supports_animations();
             animation::finish_closing(device, bg, level).await.ok();
-        } else if token.is_cancelled() && !candidate.model.supports_animations() {
-            // Sin animación: teclas en negro y se queda la imagen de fondo
-            let level = power::screen_level(&candidate.id).await;
-            animation::finish_closing(device, true, level).await.ok();
         } else if token.is_cancelled() {
             let level = power::screen_level(&candidate.id).await;
-            if let Err(e) =
-                animation::play(device, &candidate.model, &candidate.id, &anims.shutdown, true, level).await
-            {
-                log::warn!("Animación de cierre: {e}");
+            if candidate.model.allows_animation(&anims.shutdown.kind) {
+                if let Err(e) =
+                    animation::play(device, &candidate.model, &candidate.id, &anims.shutdown, true, level).await
+                {
+                    log::warn!("Animación de cierre: {e}");
+                }
             }
-            animation::finish_closing(device, anims.end_with_background, level).await.ok();
+            // El MSD-ONE siempre se queda con la imagen de fondo
+            let bg = anims.end_with_background || !candidate.model.supports_animations();
+            animation::finish_closing(device, bg, level).await.ok();
         } else {
             device.shutdown().await.ok();
         }
