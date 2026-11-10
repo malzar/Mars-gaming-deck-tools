@@ -501,6 +501,15 @@ fn trail_frames(steps: &[Step], levels: usize) -> Vec<Vec<(u8, Level)>> {
     frames
 }
 
+/// Espejo izquierda-derecha: la columna c pasa a ser la última menos c
+fn mirror(model: &Model, steps: Vec<Step>) -> Vec<Step> {
+    let (_, cols) = model.grid();
+    steps
+        .into_iter()
+        .map(|s| s.into_iter().map(|k| (k / cols) * cols + (cols - 1 - k % cols)).collect())
+        .collect()
+}
+
 /// Modo fijo: las teclas se encienden según los pasos y se quedan encendidas.
 /// Al final se apagan todas a la vez o, con `off_steps`, siguiendo ese recorrido.
 fn fixed_frames(steps: &[Step], off_steps: Option<&[Step]>) -> Vec<Vec<(u8, Level)>> {
@@ -544,6 +553,12 @@ async fn play_steps(
     steps: Vec<Step>,
     off_steps: Vec<Step>,
 ) -> Result<usize, MirajazzError> {
+    // Invertir: en espejo, de derecha a izquierda
+    let (steps, off_steps) = if anim.reverse {
+        (mirror(model, steps), mirror(model, off_steps))
+    } else {
+        (steps, off_steps)
+    };
     let colors = palette(anim);
     let mut rng = Rng::new();
     let (base, per_key) = model.anim_pacing();
@@ -770,6 +785,11 @@ mod tests {
         assert_eq!(cross_steps(&one)[1], vec![7]);
         assert_eq!(cross_steps(&one)[6], vec![17, 5]);
         assert_eq!(swing_steps(&one)[0], vec![0, 12]);
+        // Invertir: la flecha va hacia la izquierda (empieza en el 11, luego 10, 5 y 17)
+        let inv = mirror(&one, arrow_steps(&one));
+        assert_eq!(inv[0], vec![11]);
+        assert_eq!(inv[1], vec![5, 10, 17]);
+        assert_eq!(inv.last().unwrap(), &vec![0, 12]);
         assert_eq!(swing_steps(&one)[6], vec![11, 10]);
         let pro = Model::from_vid_pid(0x0b00, 0x1003).unwrap();
         for steps in [snake_steps(&pro), bounce_steps(&pro), meet_steps(&pro), rain_steps(&pro), windmill_steps(&pro), cross_steps(&pro), swing_steps(&pro)] {

@@ -64,7 +64,7 @@ pub enum AnimKind {
     Fade,
     /// GIF propio repartido por la cuadrícula de teclas
     Gif,
-    /// Tus propios iconos aparecen (o se van) tecla a tecla
+    /// Retirada ("Tus iconos"; se conserva para no romper ajustes guardados)
     Cascade,
     /// Una sola tecla encendida que recorre el deck de la primera a la última
     Chase,
@@ -109,6 +109,8 @@ pub struct Animation {
     pub fixed: bool,
     /// En modo fijo, cómo se apagan al final
     pub fixed_off: FixedOff,
+    /// Invertir: la animación va de derecha a izquierda (en espejo)
+    pub reverse: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
@@ -135,6 +137,7 @@ impl Animation {
             trail: 3,
             fixed: false,
             fixed_off: FixedOff::All,
+            reverse: false,
         }
     }
 }

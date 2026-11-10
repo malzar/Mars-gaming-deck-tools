@@ -103,12 +103,12 @@ impl Model {
     pub fn anim_kinds(&self) -> &'static [&'static str] {
         if self.supports_animations() {
             &[
-                "none", "cascade", "chase", "arrow", "random", "snake", "bounce", "meet", "rain", "windmill",
+                "none", "chase", "arrow", "random", "snake", "bounce", "meet", "rain", "windmill",
                 "cross", "swing", "wave", "keys", "fade", "gif",
             ]
         } else {
             &[
-                "none", "cascade", "chase", "arrow", "random", "snake", "bounce", "meet", "rain", "windmill",
+                "none", "chase", "arrow", "random", "snake", "bounce", "meet", "rain", "windmill",
                 "cross", "swing",
             ]
         }
