@@ -38,7 +38,7 @@ pub fn apply_sized(img: DynamicImage, adj: Adjust, (w, h): (u32, u32)) -> Dynami
 
 
 /// Imagen de prueba: anillos de colores (3 px cada uno en 85 px), flecha
-/// hacia arriba y marcas blancas en las 4 esquinas
+/// hacia arriba y marcas blancas en las esquinas de arriba
 pub fn test_pattern_sized(w: u32, h: u32) -> DynamicImage {
     const RINGS: [[u8; 3]; 7] = [
         [255, 32, 32], [255, 138, 0], [255, 230, 0], [32, 208, 64],
@@ -65,9 +65,9 @@ pub fn test_pattern_sized(w: u32, h: u32) -> DynamicImage {
         if (hi / 2 + u(6.0)..hi / 2 + u(10.0)).contains(&y) && (x - cx).abs() <= u(6.0) {
             *p = Rgb([255, 255, 255]);
         }
-        // Marcas blancas en las 4 esquinas
+        // Marcas en las esquinas de arriba
         let m = u(5.0);
-        if (y < m || y >= hi - m) && (x < m || x >= wi - m) {
+        if y < m && (x < m || x >= wi - m) {
             *p = Rgb([255, 255, 255]);
         }
     }

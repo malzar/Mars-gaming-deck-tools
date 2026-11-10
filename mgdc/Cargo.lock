@@ -856,7 +856,7 @@ dependencies = [
 
 [[package]]
 name = "mgdc"
-version = "0.7.0"
+version = "0.6.1"
 dependencies = [
  "axum",
  "chrono",

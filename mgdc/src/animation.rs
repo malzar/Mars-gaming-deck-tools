@@ -18,7 +18,7 @@ use tokio::sync::Mutex;
 
 use crate::{
     family::Model,
-    settings::{AnimKind, Animation, Calibration, parse_hex},
+    settings::{AnimKind, Animation, parse_hex},
 };
 
 /// Decks con una animación en marcha: mientras tanto se ignoran las imágenes
@@ -102,17 +102,11 @@ pub async fn play(
     brightness: u8,
 ) -> Result<(), MirajazzError> {
     let start = Instant::now();
-    // Las animaciones también respetan la calibración de iconos
-    let cal = crate::settings::for_device(id).await.calibration;
     let frames = match anim.kind {
         AnimKind::None => return Ok(()),
-        AnimKind::Gif => play_gif(device, model, &cal, id, closing).await?,
-        AnimKind::Chase => play_steps(device, model, &cal, anim, chase_steps(model)).await?,
-        AnimKind::Arrow => play_steps(device, model, &cal, anim, arrow_steps(model)).await?,
-        AnimKind::Rows => play_steps(device, model, &cal, anim, row_steps(model)).await?,
-        AnimKind::Random => play_steps(device, model, &cal, anim, random_steps(model)).await?,
-        AnimKind::Fade => play_fade(device, model, &cal, anim, closing, brightness).await?,
-        _ => play_effect(device, model, &cal, anim, closing).await?,
+        AnimKind::Gif => play_gif(device, model, id, closing).await?,
+        AnimKind::Fade => play_fade(device, model, anim, closing, brightness).await?,
+        _ => play_effect(device, model, anim, closing).await?,
     };
     log::info!(
         "Animación {:?} ({}) en {id}: {frames} fotogramas en {} ms",
@@ -135,7 +129,6 @@ fn palette(anim: &Animation) -> Vec<[u8; 3]> {
 async fn play_effect(
     device: &Device,
     model: &Model,
-    cal: &Calibration,
     anim: &Animation,
     closing: bool,
 ) -> Result<usize, MirajazzError> {
@@ -174,7 +167,7 @@ async fn play_effect(
                 let c = scale(base, a);
                 if last[i] != Some(c) {
                     last[i] = Some(c);
-                    model.draw_key(device, i as u8, model.calibrate(cal, i as u8, false, solid(c))).await?;
+                    model.draw_key(device, i as u8, solid(c)).await?;
                     sent += 1;
                 }
             }
@@ -192,190 +185,11 @@ async fn play_effect(
     Ok(frames)
 }
 
-/// Un paso de animación: las teclas (posiciones de OpenDeck) encendidas en ese momento
-type Step = Vec<u8>;
-
-/// Lineal: 0, 1, 2… hasta la última, de una en una
-fn chase_steps(model: &Model) -> Vec<Step> {
-    let (rows, cols) = model.grid();
-    (0..rows * cols).map(|k| vec![k]).collect()
-}
-
-/// Flecha: la fila del centro va delante y las demás se retrasan una columna
-/// por cada fila de distancia. En el MSD-ONE (3×6): 6 → 7,0,12 → 8,1,13 → … → 5,17.
-fn arrow_steps(model: &Model) -> Vec<Step> {
-    let (rows, cols) = model.grid();
-    let mid = (rows as i32 - 1) / 2;
-    let max_lag = (0..rows as i32).map(|r| (r - mid).abs()).max().unwrap_or(0);
-    (0..cols as i32 + max_lag)
-        .map(|k| {
-            (0..rows as i32)
-                .filter_map(|r| {
-                    let c = k - (r - mid).abs();
-                    (0..cols as i32).contains(&c).then(|| (r * cols as i32 + c) as u8)
-                })
-                .collect()
-        })
-        .collect()
-}
-
-/// Filas: 0-5, luego 6-11 (y se apaga la anterior), y así hasta la última
-fn row_steps(model: &Model) -> Vec<Step> {
-    let (rows, cols) = model.grid();
-    (0..rows).map(|r| (0..cols).map(|c| r * cols + c).collect()).collect()
-}
-
-/// Aleatorio: todas las teclas en orden al azar, de una en una, sin repetir
-fn random_steps(model: &Model) -> Vec<Step> {
-    let (rows, cols) = model.grid();
-    let mut keys: Vec<u8> = (0..rows * cols).collect();
-    let mut rng = Rng::new();
-    for i in (1..keys.len()).rev() {
-        keys.swap(i, rng.below(i + 1));
-    }
-    keys.into_iter().map(|k| vec![k]).collect()
-}
-
-/// Generador pseudoaleatorio sencillo (xorshift), sin dependencias
-struct Rng(u64);
-
-impl Rng {
-    fn new() -> Self {
-        let seed = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0x9E37_79B9_7F4A_7C15);
-        Rng(seed | 1)
-    }
-    fn next(&mut self) -> u64 {
-        self.0 ^= self.0 << 13;
-        self.0 ^= self.0 >> 7;
-        self.0 ^= self.0 << 17;
-        self.0
-    }
-    fn below(&mut self, n: usize) -> usize {
-        (self.next() % n as u64) as usize
-    }
-}
-
-/// Color vivo al azar (tono aleatorio, saturación y brillo al máximo)
-fn random_color(rng: &mut Rng) -> [u8; 3] {
-    let h = (rng.next() % 360) as f32 / 60.0;
-    let x = 1.0 - (h % 2.0 - 1.0).abs();
-    let (r, g, b) = match h as u32 {
-        0 => (1.0, x, 0.0),
-        1 => (x, 1.0, 0.0),
-        2 => (0.0, 1.0, x),
-        3 => (0.0, x, 1.0),
-        4 => (x, 0.0, 1.0),
-        _ => (1.0, 0.0, x),
-    };
-    [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8]
-}
-
-/// Estela: brillo de una tecla en los pasos siguientes a apagarse
-/// (encendida → 70 % → 30 % → 10 % → apagada)
-const TRAIL: [f32; 4] = [1.0, 0.7, 0.3, 0.1];
-
-/// Brillo de una tecla en un paso: `Some(i)` = `TRAIL[i]`, `None` = apagada
-type Level = Option<usize>;
-
-/// Convierte los pasos (teclas encendidas) en cambios con estela: lo que deja
-/// de estar encendido va bajando por `TRAIL` un escalón por paso hasta
-/// apagarse. Al final se añaden pasos para que también se apague la última estela.
-fn trail_frames(steps: &[Step]) -> Vec<Vec<(u8, Level)>> {
-    use std::collections::HashMap;
-    let mut state: HashMap<u8, usize> = HashMap::new();
-    let mut frames = vec![];
-    let empty: Step = vec![];
-    for step in steps.iter().chain(std::iter::repeat_n(&empty, TRAIL.len())) {
-        let mut changes = vec![];
-        let mut keys: Vec<u8> = state.keys().copied().chain(step.iter().copied()).collect();
-        keys.sort();
-        keys.dedup();
-        for k in keys {
-            let before = state.get(&k).copied();
-            let after = if step.contains(&k) {
-                Some(0)
-            } else {
-                before.map(|i| i + 1).filter(|&i| i < TRAIL.len())
-            };
-            if after != before {
-                changes.push((k, after));
-            }
-            match after {
-                Some(i) => { state.insert(k, i); }
-                None => { state.remove(&k); }
-            }
-        }
-        if !changes.is_empty() {
-            frames.push(changes);
-        }
-    }
-    frames
-}
-
-/// Reproduce una lista de pasos con estela. En cada paso solo se envían las
-/// teclas que cambian (se encienden, bajan al 50 % o se apagan), y se espera
-/// lo que necesita el deck según cuántas han cambiado.
-async fn play_steps(
-    device: &Device,
-    model: &Model,
-    cal: &Calibration,
-    anim: &Animation,
-    steps: Vec<Step>,
-) -> Result<usize, MirajazzError> {
-    let colors = palette(anim);
-    let mut rng = Rng::new();
-    let (base, per_key) = model.anim_pacing();
-    let frames = trail_frames(&steps);
-    let n = frames.len().max(1);
-    let even = Duration::from_millis(anim.duration_ms.clamp(300, 8000) as u64) / n as u32;
-    // Color de cada tecla encendida, para que su estela sea del mismo color
-    let mut color_of: std::collections::HashMap<u8, [u8; 3]> = std::collections::HashMap::new();
-    let mut slowest = 0;
-
-    for (i, changes) in frames.iter().enumerate() {
-        let t = Instant::now();
-        for &(k, level) in changes {
-            match level {
-                None => {
-                    model.clear_key(device, k, false).await?;
-                    color_of.remove(&k);
-                }
-                Some(0) => {
-                    let c = if anim.random_colors {
-                        random_color(&mut rng)
-                    } else {
-                        sample(&colors, i as f32 / steps.len().max(1) as f32)
-                    };
-                    color_of.insert(k, c);
-                    model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
-                }
-                Some(t) => {
-                    let c = scale(*color_of.get(&k).unwrap_or(&[255, 255, 255]), TRAIL[t]);
-                    model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
-                }
-            }
-        }
-        device.flush().await?;
-
-        let wait = even.max(Duration::from_millis(base + per_key * changes.len() as u64));
-        slowest = slowest.max(wait.as_millis());
-        if let Some(rest) = wait.checked_sub(t.elapsed()) {
-            tokio::time::sleep(rest).await;
-        }
-    }
-    log::info!("Animación {:?}: {n} pasos con estela (70/30/10 %), hasta {slowest} ms por paso", anim.kind);
-    Ok(n)
-}
-
 /// Fundido con el brillo de la pantalla: un solo envío de teclas y luego solo
 /// órdenes de brillo, que son muy ligeras. Sale suave en todos los decks.
 async fn play_fade(
     device: &Device,
     model: &Model,
-    cal: &Calibration,
     anim: &Animation,
     closing: bool,
     brightness: u8,
@@ -393,7 +207,7 @@ async fn play_fade(
         for y in 0..rows {
             for x in 0..cols {
                 let c = sample(&colors, (x as f32 + y as f32) / (cols as f32 + rows as f32));
-                model.draw_key(device, y * cols + x, model.calibrate(cal, y * cols + x, false, solid(c))).await?;
+                model.draw_key(device, y * cols + x, solid(c)).await?;
             }
         }
         device.flush().await?;
@@ -421,7 +235,7 @@ async fn play_fade(
     Ok(frames)
 }
 
-async fn play_gif(device: &Device, model: &Model, cal: &Calibration, id: &str, closing: bool) -> Result<usize, MirajazzError> {
+async fn play_gif(device: &Device, model: &Model, id: &str, closing: bool) -> Result<usize, MirajazzError> {
     let which = if closing { "shutdown" } else { "startup" };
     let Some(bytes) = gif_path(id, which).and_then(|p| std::fs::read(p).ok()) else {
         log::warn!("No hay GIF de {which} para {id}");
@@ -465,8 +279,7 @@ async fn play_gif(device: &Device, model: &Model, cal: &Calibration, id: &str, c
         for y in 0..rows as u32 {
             for x in 0..cols as u32 {
                 let tile = canvas.crop_imm(x * k, y * k, k, k);
-                let pos = (y * cols as u32 + x) as u8;
-                model.draw_key(device, pos, model.calibrate(cal, pos, false, tile)).await?;
+                model.draw_key(device, (y * cols as u32 + x) as u8, tile).await?;
             }
         }
         device.flush().await?;
@@ -500,36 +313,6 @@ pub async fn clear(device: &Device) -> Result<(), MirajazzError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn flecha_y_filas_en_el_msd_one() {
-        let one = Model::from_vid_pid(0x0b00, 0x1000).unwrap();
-        let a = arrow_steps(&one);
-        assert_eq!(a[0], vec![6]);
-        assert_eq!(a[1], vec![0, 7, 12]);
-        assert_eq!(a[2], vec![1, 8, 13]);
-        assert_eq!(a.last().unwrap(), &vec![5, 17]);
-        assert_eq!(a.len(), 7);
-        let r = row_steps(&one);
-        assert_eq!(r[1], vec![6, 7, 8, 9, 10, 11]);
-        // Estela de la flecha: el 6 pasa por 70 %, 30 %, 10 % y se apaga
-        let f = trail_frames(&a);
-        assert!(f[1].contains(&(6, Some(1))) && f[1].contains(&(7, Some(0))));
-        assert!(f[2].contains(&(6, Some(2))) && f[2].contains(&(7, Some(1))) && f[2].contains(&(8, Some(0))));
-        assert!(f[3].contains(&(6, Some(3))));
-        assert!(f[4].contains(&(6, None)));
-        // Al final: 5 y 17 bajan y se apagan
-        assert_eq!(f.len(), a.len() + TRAIL.len());
-        assert!(f.last().unwrap().iter().all(|&(_, l)| l.is_none()));
-        // Lineal: 0 → 70 % → 30 % → 10 % → apagado
-        let l = trail_frames(&chase_steps(&one));
-        assert_eq!(l[0], vec![(0, Some(0))]);
-        assert_eq!(l[1], vec![(0, Some(1)), (1, Some(0))]);
-        assert_eq!(l[4], vec![(0, None), (1, Some(3)), (2, Some(2)), (3, Some(1)), (4, Some(0))]);
-        let mut all: Vec<u8> = random_steps(&one).into_iter().flatten().collect();
-        all.sort();
-        assert_eq!(all, (0..18).collect::<Vec<u8>>());
-    }
 
     #[test]
     fn paleta_interpola_y_da_la_vuelta() {

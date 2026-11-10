@@ -20,7 +20,6 @@ use serde_json::json;
 
 use crate::{
     DEVICES, animation,
-    settings::{self, Calibration},
     family::{Model, akp05, akp153},
     panel,
 };
@@ -52,21 +51,18 @@ fn hardware_index(model: &Model, s: Slot) -> Result<u8, MirajazzError> {
     }
 }
 
-/// Se pinta con la calibración guardada, igual que los iconos de OpenDeck
-async fn draw(device: &Device, model: &Model, cal: &Calibration, s: Slot, order: usize) -> Result<(), MirajazzError> {
+async fn draw(device: &Device, model: &Model, s: Slot, order: usize) -> Result<(), MirajazzError> {
     let hw = hardware_index(model, s)?;
     let label = format!("OD{} HW{}", s.position, hw);
     match (model, s.encoder) {
         (Model::Akp05(k), true) => {
             let f = k.touch_image_format();
             let img = number_image(f.size.0 as u32, f.size.1 as u32, order, &label, [40, 20, 70]);
-            let img = model.calibrate(cal, s.position, true, img);
             device.set_button_image(hw, f, img).await
         }
         _ => {
             let size = model.key_size();
             let img = number_image(size, size, order, &label, [10, 30, 70]);
-            let img = model.calibrate(cal, s.position, false, img);
             model.draw_key(device, s.position, img).await
         }
     }
@@ -95,14 +91,13 @@ async fn number(headers: HeaderMap, Json(b): Json<Body>) -> impl IntoResponse {
         return Json(json!({ "error": "El deck no está conectado" })).into_response();
     };
 
-    let cal = settings::for_device(&b.id).await.calibration;
     let list = slots(&model);
     let mut table = vec![];
     for (i, s) in list.iter().enumerate() {
         let r = {
             let devices = DEVICES.read().await;
             let Some(device) = devices.get(&b.id) else { break };
-            match draw(device, &model, &cal, *s, i).await {
+            match draw(device, &model, *s, i).await {
                 Ok(()) => device.flush().await,
                 Err(e) => Err(e),
             }
