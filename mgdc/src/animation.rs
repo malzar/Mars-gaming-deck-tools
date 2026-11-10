@@ -303,9 +303,53 @@ fn random_color(rng: &mut Rng) -> [u8; 3] {
     [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8]
 }
 
-/// Reproduce una lista de pasos. En cada paso solo se envían las teclas que
-/// cambian (las que se encienden y las que se apagan), y se espera lo que
-/// necesita el deck según cuántas han cambiado.
+/// Brillo de una tecla en un paso de la animación
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Level {
+    Full,
+    /// Estela: al 50 % el paso siguiente a apagarse
+    Half,
+    Off,
+}
+
+/// Convierte los pasos (teclas encendidas) en cambios con estela: lo que deja
+/// de estar encendido pasa al 50 % y, un paso después, se apaga del todo.
+/// Se añade un paso más al final para que también se apague la última estela.
+fn trail_frames(steps: &[Step]) -> Vec<Vec<(u8, Level)>> {
+    use std::collections::HashMap;
+    let mut state: HashMap<u8, Level> = HashMap::new();
+    let mut frames = vec![];
+    let empty: Step = vec![];
+    for step in steps.iter().chain([&empty, &empty]) {
+        let mut changes = vec![];
+        let mut keys: Vec<u8> = state.keys().copied().chain(step.iter().copied()).collect();
+        keys.sort();
+        keys.dedup();
+        for k in keys {
+            let before = *state.get(&k).unwrap_or(&Level::Off);
+            let after = if step.contains(&k) {
+                Level::Full
+            } else {
+                match before {
+                    Level::Full => Level::Half,
+                    _ => Level::Off,
+                }
+            };
+            if after != before {
+                changes.push((k, after));
+            }
+            if after == Level::Off { state.remove(&k); } else { state.insert(k, after); }
+        }
+        if !changes.is_empty() {
+            frames.push(changes);
+        }
+    }
+    frames
+}
+
+/// Reproduce una lista de pasos con estela. En cada paso solo se envían las
+/// teclas que cambian (se encienden, bajan al 50 % o se apagan), y se espera
+/// lo que necesita el deck según cuántas han cambiado.
 async fn play_steps(
     device: &Device,
     model: &Model,
@@ -316,46 +360,45 @@ async fn play_steps(
     let colors = palette(anim);
     let mut rng = Rng::new();
     let (base, per_key) = model.anim_pacing();
-    let n = steps.len().max(1);
+    let frames = trail_frames(&steps);
+    let n = frames.len().max(1);
     let even = Duration::from_millis(anim.duration_ms.clamp(300, 8000) as u64) / n as u32;
-    let mut lit: Step = vec![];
+    // Color de cada tecla encendida, para que su estela sea del mismo color
+    let mut color_of: std::collections::HashMap<u8, [u8; 3]> = std::collections::HashMap::new();
     let mut slowest = 0;
 
-    for (i, step) in steps.iter().enumerate() {
+    for (i, changes) in frames.iter().enumerate() {
         let t = Instant::now();
-        let mut changed = 0u64;
-        for &k in &lit {
-            if !step.contains(&k) {
-                model.clear_key(device, k, false).await?;
-                changed += 1;
+        for &(k, level) in changes {
+            match level {
+                Level::Off => {
+                    model.clear_key(device, k, false).await?;
+                    color_of.remove(&k);
+                }
+                Level::Full => {
+                    let c = if anim.random_colors {
+                        random_color(&mut rng)
+                    } else {
+                        sample(&colors, i as f32 / steps.len().max(1) as f32)
+                    };
+                    color_of.insert(k, c);
+                    model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
+                }
+                Level::Half => {
+                    let c = scale(*color_of.get(&k).unwrap_or(&[255, 255, 255]), 0.5);
+                    model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
+                }
             }
-        }
-        for &k in step {
-            if lit.contains(&k) {
-                continue;
-            }
-            let c = if anim.random_colors {
-                random_color(&mut rng)
-            } else {
-                sample(&colors, i as f32 / n as f32)
-            };
-            model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
-            changed += 1;
         }
         device.flush().await?;
-        lit = step.clone();
 
-        let wait = even.max(Duration::from_millis(base + per_key * changed));
+        let wait = even.max(Duration::from_millis(base + per_key * changes.len() as u64));
         slowest = slowest.max(wait.as_millis());
         if let Some(rest) = wait.checked_sub(t.elapsed()) {
             tokio::time::sleep(rest).await;
         }
     }
-    for &k in &lit {
-        model.clear_key(device, k, false).await?;
-    }
-    device.flush().await?;
-    log::info!("Animación {:?}: {n} pasos, hasta {slowest} ms por paso", anim.kind);
+    log::info!("Animación {:?}: {n} pasos con estela, hasta {slowest} ms por paso", anim.kind);
     Ok(n)
 }
 
@@ -501,6 +544,13 @@ mod tests {
         assert_eq!(a.len(), 7);
         let r = row_steps(&one);
         assert_eq!(r[1], vec![6, 7, 8, 9, 10, 11]);
+        // Estela de la flecha: en el segundo paso el 6 baja al 50 %, en el tercero se apaga
+        let f = trail_frames(&a);
+        assert!(f[1].contains(&(6, Level::Half)) && f[1].contains(&(7, Level::Full)));
+        assert!(f[2].contains(&(6, Level::Off)) && f[2].contains(&(7, Level::Half)) && f[2].contains(&(8, Level::Full)));
+        // Al final: 5 y 17 al 50 % y luego apagados
+        assert_eq!(f.len(), a.len() + 2);
+        assert!(f.last().unwrap().iter().all(|&(_, l)| l == Level::Off));
         let mut all: Vec<u8> = random_steps(&one).into_iter().flatten().collect();
         all.sort();
         assert_eq!(all, (0..18).collect::<Vec<u8>>());
