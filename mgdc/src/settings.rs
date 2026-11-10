@@ -105,22 +105,10 @@ pub struct Animation {
     pub random_colors: bool,
     /// Pasos de estela (1-3): cuántos pasos tarda en apagarse una tecla
     pub trail: u8,
-    /// Fijo: sin estela, las teclas se quedan encendidas hasta el final
+    /// Fijo: sin estela, las teclas se quedan encendidas y al final se apagan todas de golpe
     pub fixed: bool,
-    /// En modo fijo, cómo se apagan al final
-    pub fixed_off: FixedOff,
     /// Invertir: de abajo arriba y de derecha a izquierda (girada 180°)
     pub reverse: bool,
-}
-
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum FixedOff {
-    /// Todas a la vez
-    #[default]
-    All,
-    /// Con el mismo recorrido que al encender
-    Same,
 }
 
 impl Animation {
@@ -136,7 +124,6 @@ impl Animation {
             random_colors: false,
             trail: 3,
             fixed: false,
-            fixed_off: FixedOff::All,
             reverse: false,
         }
     }

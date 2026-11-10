@@ -107,17 +107,16 @@ pub async fn play(
     let frames = match anim.kind {
         AnimKind::None => return Ok(()),
         AnimKind::Gif => play_gif(device, model, &cal, id, closing).await?,
-        AnimKind::Chase => play_steps(device, model, &cal, anim, chase_steps(model), chase_steps(model)).await?,
-        AnimKind::Arrow => play_steps(device, model, &cal, anim, arrow_steps(model), arrow_steps(model)).await?,
-        // Al apagar "igual", la aleatoria usa otro orden al azar
-        AnimKind::Random => play_steps(device, model, &cal, anim, random_steps(model), random_steps(model)).await?,
-        AnimKind::Snake => play_steps(device, model, &cal, anim, snake_steps(model), snake_steps(model)).await?,
-        AnimKind::Bounce => play_steps(device, model, &cal, anim, bounce_steps(model), bounce_steps(model)).await?,
-        AnimKind::Meet => play_steps(device, model, &cal, anim, meet_steps(model), meet_steps(model)).await?,
-        AnimKind::Rain => play_steps(device, model, &cal, anim, rain_steps(model), rain_steps(model)).await?,
-        AnimKind::Windmill => play_steps(device, model, &cal, anim, windmill_steps(model), windmill_steps(model)).await?,
-        AnimKind::Cross => play_steps(device, model, &cal, anim, cross_steps(model), cross_steps(model)).await?,
-        AnimKind::Swing => play_steps(device, model, &cal, anim, swing_steps(model), swing_steps(model)).await?,
+        AnimKind::Chase => play_steps(device, model, &cal, anim, chase_steps(model)).await?,
+        AnimKind::Arrow => play_steps(device, model, &cal, anim, arrow_steps(model)).await?,
+        AnimKind::Random => play_steps(device, model, &cal, anim, random_steps(model)).await?,
+        AnimKind::Snake => play_steps(device, model, &cal, anim, snake_steps(model)).await?,
+        AnimKind::Bounce => play_steps(device, model, &cal, anim, bounce_steps(model)).await?,
+        AnimKind::Meet => play_steps(device, model, &cal, anim, meet_steps(model)).await?,
+        AnimKind::Rain => play_steps(device, model, &cal, anim, rain_steps(model)).await?,
+        AnimKind::Windmill => play_steps(device, model, &cal, anim, windmill_steps(model)).await?,
+        AnimKind::Cross => play_steps(device, model, &cal, anim, cross_steps(model)).await?,
+        AnimKind::Swing => play_steps(device, model, &cal, anim, swing_steps(model)).await?,
         // Retiradas: no hacen nada
         AnimKind::Rows | AnimKind::Spiral => 0,
         AnimKind::Fade => play_fade(device, model, &cal, anim, closing, brightness).await?,
@@ -515,9 +514,9 @@ fn mirror(model: &Model, steps: Vec<Step>) -> Vec<Step> {
         .collect()
 }
 
-/// Modo fijo: las teclas se encienden según los pasos y se quedan encendidas.
-/// Al final se apagan todas a la vez o, con `off_steps`, siguiendo ese recorrido.
-fn fixed_frames(steps: &[Step], off_steps: Option<&[Step]>) -> Vec<Vec<(u8, Level)>> {
+/// Modo fijo: las teclas se encienden según los pasos, se quedan encendidas
+/// y al final se apagan todas de golpe
+fn fixed_frames(steps: &[Step]) -> Vec<Vec<(u8, Level)>> {
     let mut lit: Vec<u8> = vec![];
     let mut frames = vec![];
     for step in steps {
@@ -527,22 +526,8 @@ fn fixed_frames(steps: &[Step], off_steps: Option<&[Step]>) -> Vec<Vec<(u8, Leve
             frames.push(on);
         }
     }
-    match off_steps {
-        Some(off) => {
-            for step in off {
-                let changes: Vec<(u8, Level)> = step.iter().filter(|k| lit.contains(k)).map(|&k| (k, None)).collect();
-                lit.retain(|k| !step.contains(k));
-                if !changes.is_empty() {
-                    frames.push(changes);
-                }
-            }
-            // Por si el recorrido de apagado no pasa por alguna tecla
-            if !lit.is_empty() {
-                frames.push(lit.iter().map(|&k| (k, None)).collect());
-            }
-        }
-        None if !lit.is_empty() => frames.push(lit.iter().map(|&k| (k, None)).collect()),
-        None => {}
+    if !lit.is_empty() {
+        frames.push(lit.iter().map(|&k| (k, None)).collect());
     }
     frames
 }
@@ -556,21 +541,15 @@ async fn play_steps(
     cal: &Calibration,
     anim: &Animation,
     steps: Vec<Step>,
-    off_steps: Vec<Step>,
 ) -> Result<usize, MirajazzError> {
     // Invertir: de abajo arriba y de derecha a izquierda
-    let (steps, off_steps) = if anim.reverse {
-        (mirror(model, steps), mirror(model, off_steps))
-    } else {
-        (steps, off_steps)
-    };
+    let steps = if anim.reverse { mirror(model, steps) } else { steps };
     let colors = palette(anim);
     let mut rng = Rng::new();
     let (base, per_key) = model.anim_pacing();
     let levels = trail_levels(anim.trail);
     let frames = if anim.fixed {
-        let same = anim.fixed_off == crate::settings::FixedOff::Same;
-        fixed_frames(&steps, same.then_some(off_steps.as_slice()))
+        fixed_frames(&steps)
     } else {
         trail_frames(&steps, levels.len())
     };
@@ -617,7 +596,7 @@ async fn play_steps(
             }
         }
     }
-    log::info!("Animación {:?}: {n} pasos ({}), hasta {slowest} ms por paso", anim.kind, if anim.fixed { format!("fija, al apagar {}", if anim.fixed_off == crate::settings::FixedOff::Same { "igual que al encender" } else { "de golpe" }) } else { format!("estela de {}", levels.len() - 1) });
+    log::info!("Animación {:?}: {n} pasos ({}), hasta {slowest} ms por paso", anim.kind, if anim.fixed { "fija, al final se apaga todo de golpe".to_string() } else { format!("estela de {}", levels.len() - 1) });
     Ok(n)
 }
 
@@ -799,23 +778,19 @@ mod tests {
         let lin = mirror(&one, chase_steps(&one));
         assert_eq!(lin[0], vec![17]);
         assert_eq!(lin.last().unwrap(), &vec![0]);
-        // Lo que manda el panel para "Fijo, igual que al encender" se lee bien
+        // Ajustes guardados con la opción antigua "fixed_off" se siguen leyendo
         let parsed: crate::settings::Animation =
             serde_json::from_str(r#"{"kind":"arrow","fixed":true,"fixed_off":"same","reverse":true}"#).unwrap();
-        assert!(parsed.fixed && parsed.fixed_off == crate::settings::FixedOff::Same && parsed.reverse);
+        assert!(parsed.fixed && parsed.reverse);
         assert_eq!(swing_steps(&one)[6], vec![11, 10]);
         let pro = Model::from_vid_pid(0x0b00, 0x1003).unwrap();
         for steps in [snake_steps(&pro), bounce_steps(&pro), meet_steps(&pro), rain_steps(&pro), windmill_steps(&pro), cross_steps(&pro), swing_steps(&pro)] {
             assert!(steps.iter().flatten().all(|&k| k < 10));
         }
-        // Fijo: se encienden y se quedan; al final, de golpe o con el mismo recorrido
-        let fx = fixed_frames(&a, None);
+        // Fijo: se encienden, se quedan y al final se apagan todas de golpe
+        let fx = fixed_frames(&a);
         assert_eq!(fx.len(), a.len() + 1);
         assert_eq!(fx.last().unwrap().len(), 18);
-        let fs = fixed_frames(&a, Some(&a));
-        assert_eq!(fs.len(), a.len() * 2);
-        assert_eq!(fs[a.len()], vec![(6, None)]);
-        assert_eq!(fs.last().unwrap(), &vec![(5, None), (17, None)]);
         let f = trail_frames(&a, 4);
         assert!(f[1].contains(&(6, Some(1))) && f[1].contains(&(7, Some(0))));
         assert!(f[2].contains(&(6, Some(2))) && f[2].contains(&(7, Some(1))) && f[2].contains(&(8, Some(0))));
