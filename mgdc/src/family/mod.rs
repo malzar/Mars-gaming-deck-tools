@@ -160,7 +160,9 @@ impl Model {
         }
     }
 
-    /// Pinta la imagen de prueba de calibración en una zona (sin enviarla)
+    /// Pinta la imagen de prueba de calibración en una zona (sin enviarla).
+    /// Las pantallas de las otras zonas se quedan en negro, para ver solo la
+    /// zona que se está calibrando. Con `zone` vacío se pintan todas.
     pub async fn draw_calibration(
         &self,
         device: &Device,
@@ -168,42 +170,54 @@ impl Model {
         cal: &crate::settings::Calibration,
     ) -> Result<usize, MirajazzError> {
         use crate::calibration::{apply_sized, is_side, test_pattern_sized};
+        let show = |z: &str| zone.is_empty() || zone == z;
         let mut sent = 0;
         match self {
             Model::Akp153(_) => {
                 let (rows, cols) = self.grid();
                 for pos in 0..rows * cols {
                     let side = is_side(pos);
-                    if (zone == "keys" && side) || (zone == "side" && !side) {
-                        continue;
+                    if !show(if side { "side" } else { "keys" }) {
+                        self.clear_key(device, pos, false).await?;
+                    } else {
+                        let size = if self.protocol_version() == 1 {
+                            (85, 85)
+                        } else if side {
+                            (82, 82)
+                        } else {
+                            (95, 95)
+                        };
+                        let adj = if side { cal.side } else { cal.keys };
+                        let img = apply_sized(test_pattern_sized(size.0, size.1), adj, size);
+                        self.draw_key(device, pos, img).await?;
                     }
-                    let size = if side { (82, 82) } else { (95, 95) };
-                    let size = if self.protocol_version() == 1 { (85, 85) } else { size };
-                    let adj = if side { cal.side } else { cal.keys };
-                    let img = apply_sized(test_pattern_sized(size.0, size.1), adj, size);
-                    self.draw_key(device, pos, img).await?;
                     sent += 1;
                 }
             }
             Model::Akp05(k) => {
-                if zone != "strip" {
-                    let s = self.key_size();
-                    let img = apply_sized(test_pattern_sized(s, s), cal.keys, (s, s));
-                    for pos in 0..akp05::KEY_COUNT as u8 {
-                        self.draw_key(device, pos, img.clone()).await?;
-                        sent += 1;
+                let (rows, cols) = self.grid();
+                let s = self.key_size();
+                let key_img = apply_sized(test_pattern_sized(s, s), cal.keys, (s, s));
+                for pos in 0..rows * cols {
+                    if show("keys") {
+                        self.draw_key(device, pos, key_img.clone()).await?;
+                    } else {
+                        self.clear_key(device, pos, false).await?;
                     }
+                    sent += 1;
                 }
-                if zone != "keys" {
-                    let f = k.touch_image_format();
-                    let size = (f.size.0 as u32, f.size.1 as u32);
-                    let img = apply_sized(test_pattern_sized(size.0, size.1), cal.strip, size);
-                    for enc in 0..akp05::ENCODER_COUNT as u8 {
+                let f = k.touch_image_format();
+                let size = (f.size.0 as u32, f.size.1 as u32);
+                let strip_img = apply_sized(test_pattern_sized(size.0, size.1), cal.strip, size);
+                for enc in 0..akp05::ENCODER_COUNT as u8 {
+                    if show("strip") {
                         device
-                            .set_button_image(akp05::map_position(enc, true)?, f.clone(), img.clone())
+                            .set_button_image(akp05::map_position(enc, true)?, f.clone(), strip_img.clone())
                             .await?;
-                        sent += 1;
+                    } else {
+                        self.clear_key(device, enc, true).await?;
                     }
+                    sent += 1;
                 }
             }
         }
