@@ -87,8 +87,22 @@ pub struct Animation {
     pub colors: Vec<String>,
     /// Cada tecla de un color al azar (en vez de los colores de arriba)
     pub random_colors: bool,
-    /// Pasos de estela (1-10): cuántos pasos tarda en apagarse una tecla
+    /// Pasos de estela (1-3): cuántos pasos tarda en apagarse una tecla
     pub trail: u8,
+    /// Fijo: sin estela, las teclas se quedan encendidas hasta el final
+    pub fixed: bool,
+    /// En modo fijo, cómo se apagan al final
+    pub fixed_off: FixedOff,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum FixedOff {
+    /// Todas a la vez
+    #[default]
+    All,
+    /// Con el mismo recorrido que al encender
+    Same,
 }
 
 impl Animation {
@@ -103,6 +117,8 @@ impl Animation {
             ],
             random_colors: false,
             trail: 3,
+            fixed: false,
+            fixed_off: FixedOff::All,
         }
     }
 }

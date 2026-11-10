@@ -107,10 +107,11 @@ pub async fn play(
     let frames = match anim.kind {
         AnimKind::None => return Ok(()),
         AnimKind::Gif => play_gif(device, model, &cal, id, closing).await?,
-        AnimKind::Chase => play_steps(device, model, &cal, anim, chase_steps(model)).await?,
-        AnimKind::Arrow => play_steps(device, model, &cal, anim, arrow_steps(model)).await?,
-        AnimKind::Rows => play_steps(device, model, &cal, anim, row_steps(model)).await?,
-        AnimKind::Random => play_steps(device, model, &cal, anim, random_steps(model)).await?,
+        AnimKind::Chase => play_steps(device, model, &cal, anim, chase_steps(model), chase_steps(model)).await?,
+        AnimKind::Arrow => play_steps(device, model, &cal, anim, arrow_steps(model), arrow_steps(model)).await?,
+        AnimKind::Rows => play_steps(device, model, &cal, anim, row_steps(model), row_steps(model)).await?,
+        // Al apagar "igual", la aleatoria usa otro orden al azar
+        AnimKind::Random => play_steps(device, model, &cal, anim, random_steps(model), random_steps(model)).await?,
         AnimKind::Fade => play_fade(device, model, &cal, anim, closing, brightness).await?,
         _ => play_effect(device, model, &cal, anim, closing).await?,
     };
@@ -277,7 +278,7 @@ fn random_color(rng: &mut Rng) -> [u8; 3] {
 /// Con `n` pasos baja en línea recta hasta apagarse; con 3, por ejemplo:
 /// encendida → 75 % → 50 % → 25 % → apagada.
 pub fn trail_levels(n: u8) -> Vec<f32> {
-    let n = n.clamp(1, 10) as usize;
+    let n = n.clamp(1, 3) as usize;
     (0..=n).map(|i| 1.0 - i as f32 / (n + 1) as f32).collect()
 }
 
@@ -319,6 +320,38 @@ fn trail_frames(steps: &[Step], levels: usize) -> Vec<Vec<(u8, Level)>> {
     frames
 }
 
+/// Modo fijo: las teclas se encienden según los pasos y se quedan encendidas.
+/// Al final se apagan todas a la vez o, con `off_steps`, siguiendo ese recorrido.
+fn fixed_frames(steps: &[Step], off_steps: Option<&[Step]>) -> Vec<Vec<(u8, Level)>> {
+    let mut lit: Vec<u8> = vec![];
+    let mut frames = vec![];
+    for step in steps {
+        let on: Vec<(u8, Level)> = step.iter().filter(|k| !lit.contains(k)).map(|&k| (k, Some(0))).collect();
+        lit.extend(on.iter().map(|&(k, _)| k));
+        if !on.is_empty() {
+            frames.push(on);
+        }
+    }
+    match off_steps {
+        Some(off) => {
+            for step in off {
+                let changes: Vec<(u8, Level)> = step.iter().filter(|k| lit.contains(k)).map(|&k| (k, None)).collect();
+                lit.retain(|k| !step.contains(k));
+                if !changes.is_empty() {
+                    frames.push(changes);
+                }
+            }
+            // Por si el recorrido de apagado no pasa por alguna tecla
+            if !lit.is_empty() {
+                frames.push(lit.iter().map(|&k| (k, None)).collect());
+            }
+        }
+        None if !lit.is_empty() => frames.push(lit.iter().map(|&k| (k, None)).collect()),
+        None => {}
+    }
+    frames
+}
+
 /// Reproduce una lista de pasos con estela. En cada paso solo se envían las
 /// teclas que cambian (se encienden, bajan al 50 % o se apagan), y se espera
 /// lo que necesita el deck según cuántas han cambiado.
@@ -328,12 +361,18 @@ async fn play_steps(
     cal: &Calibration,
     anim: &Animation,
     steps: Vec<Step>,
+    off_steps: Vec<Step>,
 ) -> Result<usize, MirajazzError> {
     let colors = palette(anim);
     let mut rng = Rng::new();
     let (base, per_key) = model.anim_pacing();
     let levels = trail_levels(anim.trail);
-    let frames = trail_frames(&steps, levels.len());
+    let frames = if anim.fixed {
+        let same = anim.fixed_off == crate::settings::FixedOff::Same;
+        fixed_frames(&steps, same.then_some(off_steps.as_slice()))
+    } else {
+        trail_frames(&steps, levels.len())
+    };
     let n = frames.len().max(1);
     let even = Duration::from_millis(anim.duration_ms.clamp(300, 8000) as u64) / n as u32;
     // Color de cada tecla encendida, para que su estela sea del mismo color
@@ -371,7 +410,7 @@ async fn play_steps(
             tokio::time::sleep(rest).await;
         }
     }
-    log::info!("Animación {:?}: {n} pasos con estela de {} pasos, hasta {slowest} ms por paso", anim.kind, levels.len() - 1);
+    log::info!("Animación {:?}: {n} pasos ({}), hasta {slowest} ms por paso", anim.kind, if anim.fixed { format!("fija, apagado {:?}", anim.fixed_off) } else { format!("estela de {}", levels.len() - 1) });
     Ok(n)
 }
 
@@ -520,7 +559,15 @@ mod tests {
         // Estela de 3 pasos en la flecha: el 6 pasa por 75 %, 50 %, 25 % y se apaga
         assert_eq!(trail_levels(3), vec![1.0, 0.75, 0.5, 0.25]);
         assert_eq!(trail_levels(1), vec![1.0, 0.5]);
-        assert_eq!(trail_levels(10).len(), 11);
+        assert_eq!(trail_levels(10).len(), 4);
+        // Fijo: se encienden y se quedan; al final, de golpe o con el mismo recorrido
+        let fx = fixed_frames(&a, None);
+        assert_eq!(fx.len(), a.len() + 1);
+        assert_eq!(fx.last().unwrap().len(), 18);
+        let fs = fixed_frames(&a, Some(&a));
+        assert_eq!(fs.len(), a.len() * 2);
+        assert_eq!(fs[a.len()], vec![(6, None)]);
+        assert_eq!(fs.last().unwrap(), &vec![(5, None), (17, None)]);
         let f = trail_frames(&a, 4);
         assert!(f[1].contains(&(6, Some(1))) && f[1].contains(&(7, Some(0))));
         assert!(f[2].contains(&(6, Some(2))) && f[2].contains(&(7, Some(1))) && f[2].contains(&(8, Some(0))));
