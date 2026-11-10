@@ -95,6 +95,7 @@
         <button data-go="icons" data-t="tIcons"></button>
         <button data-go="anims" data-t="tAnims"></button>
         <button data-go="info" data-t="tInfo"></button>
+        <!-- PRUEBAS --><button data-go="debug">Debug</button><!-- /PRUEBAS -->
       </nav>
       <div class="card" data-tab="screen">
         <p class="lbl" data-t="screen"></p>
@@ -273,8 +274,8 @@
       </div>
 
       <!-- PRUEBAS: numerar pantallas (borrar luego) -->
-      <div class="card" data-tab="info" style="border-style:dashed">
-        <p class="lbl">Pruebas · numerar pantallas</p>
+      <div class="card" data-tab="debug" style="border-style:dashed">
+        <p class="lbl">Debug · numerar pantallas</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           <button id="dbgNumber">Poner números</button>
           <button id="dbgClear">Quitar números</button>
@@ -390,6 +391,8 @@ function showTab(name) {
   document.querySelectorAll('[data-tab]').forEach((e) => e.classList.toggle('tabhide', e.dataset.tab !== name));
   // Al salir de "Iconos" se quita la imagen de prueba
   if (name !== 'icons' && typeof stopCal === 'function') stopCal();
+  // PRUEBAS: al salir de Debug vuelven los iconos
+  if (name !== 'debug' && window.dbgOn) { window.dbgOn = false; api('/api/debug/restore', { id: current.id }).catch(() => {}); }
 }
 document.querySelectorAll('#tabs [data-go]').forEach((b) => b.onclick = () => showTab(b.dataset.go));
 
@@ -787,6 +790,7 @@ window.addEventListener('pagehide', () => { if (calOn) navigator.sendBeacon('/ap
 
 // PRUEBAS: numerar pantallas (borrar luego)
 $('dbgNumber').onclick = async () => {
+  window.dbgOn = true;
   const b = $('dbgNumber'); b.disabled = true; $('dbgTable').textContent = ''; msg('Numerando…', 'wait');
   try {
     const r = await api('/api/debug/number', { id: current.id });
@@ -797,8 +801,8 @@ $('dbgNumber').onclick = async () => {
   } catch (e) { msg(e.message, 'err'); }
   b.disabled = false;
 };
-$('dbgClear').onclick = () => api('/api/debug/clear', { id: current.id }).catch((e) => msg(e.message, 'err'));
-$('dbgRestore').onclick = () => api('/api/debug/restore', { id: current.id }).catch((e) => msg(e.message, 'err'));
+$('dbgClear').onclick = () => (window.dbgOn = true) && api('/api/debug/clear', { id: current.id }).catch((e) => msg(e.message, 'err'));
+$('dbgRestore').onclick = () => (window.dbgOn = false) || api('/api/debug/restore', { id: current.id }).catch((e) => msg(e.message, 'err'));
 // /PRUEBAS
 
 $('identify').onclick = () => api('/api/identify', { id: current.id }).catch((e) => msg(e.message, 'err'));
