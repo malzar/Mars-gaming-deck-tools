@@ -70,13 +70,13 @@ pub enum AnimKind {
     Chase,
     /// Flecha que avanza de izquierda a derecha: la fila del centro va delante
     Arrow,
-    /// Se enciende una fila entera, luego la siguiente y se apaga la anterior
+    /// Retirada (se conserva para no romper ajustes guardados; se trata como Ninguna)
     Rows,
     /// Teclas al azar, de una en una y sin repetir
     Random,
     /// Zigzag: una fila a la derecha, la siguiente a la izquierda
     Snake,
-    /// Espiral desde el borde hacia el centro
+    /// Retirada (se conserva para no romper ajustes guardados; se trata como Ninguna)
     Spiral,
     /// Una tecla que rebota en diagonal contra los bordes
     Bounce,
@@ -84,8 +84,12 @@ pub enum AnimKind {
     Meet,
     /// Gotas que caen por columnas al azar
     Rain,
-    /// Dos teclas opuestas que giran por el borde
+    /// Dos teclas opuestas que giran por el borde y luego por el centro
     Windmill,
+    /// Dos teclas que rebotan en diagonal en espejo y se cruzan
+    Cross,
+    /// Pareja arriba-abajo hacia la derecha y vuelta por la fila del centro
+    Swing,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

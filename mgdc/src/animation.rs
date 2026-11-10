@@ -109,15 +109,17 @@ pub async fn play(
         AnimKind::Gif => play_gif(device, model, &cal, id, closing).await?,
         AnimKind::Chase => play_steps(device, model, &cal, anim, chase_steps(model), chase_steps(model)).await?,
         AnimKind::Arrow => play_steps(device, model, &cal, anim, arrow_steps(model), arrow_steps(model)).await?,
-        AnimKind::Rows => play_steps(device, model, &cal, anim, row_steps(model), row_steps(model)).await?,
         // Al apagar "igual", la aleatoria usa otro orden al azar
         AnimKind::Random => play_steps(device, model, &cal, anim, random_steps(model), random_steps(model)).await?,
         AnimKind::Snake => play_steps(device, model, &cal, anim, snake_steps(model), snake_steps(model)).await?,
-        AnimKind::Spiral => play_steps(device, model, &cal, anim, spiral_steps(model), spiral_steps(model)).await?,
         AnimKind::Bounce => play_steps(device, model, &cal, anim, bounce_steps(model), bounce_steps(model)).await?,
         AnimKind::Meet => play_steps(device, model, &cal, anim, meet_steps(model), meet_steps(model)).await?,
         AnimKind::Rain => play_steps(device, model, &cal, anim, rain_steps(model), rain_steps(model)).await?,
         AnimKind::Windmill => play_steps(device, model, &cal, anim, windmill_steps(model), windmill_steps(model)).await?,
+        AnimKind::Cross => play_steps(device, model, &cal, anim, cross_steps(model), cross_steps(model)).await?,
+        AnimKind::Swing => play_steps(device, model, &cal, anim, swing_steps(model), swing_steps(model)).await?,
+        // Retiradas: no hacen nada
+        AnimKind::Rows | AnimKind::Spiral => 0,
         AnimKind::Fade => play_fade(device, model, &cal, anim, closing, brightness).await?,
         _ => play_effect(device, model, &cal, anim, closing).await?,
     };
@@ -222,7 +224,8 @@ fn snake_steps(model: &Model) -> Vec<Step> {
         .collect()
 }
 
-/// Orden de las teclas en espiral (borde exterior en el sentido del reloj, y hacia dentro)
+/// Orden de las teclas en espiral (borde exterior en el sentido del reloj, y hacia dentro).
+/// Lo usa el Molino para recorrer los anillos.
 fn spiral_order(rows: u8, cols: u8) -> Vec<u8> {
     let (mut top, mut left) = (0i32, 0i32);
     let (mut bottom, mut right) = (rows as i32 - 1, cols as i32 - 1);
@@ -235,12 +238,6 @@ fn spiral_order(rows: u8, cols: u8) -> Vec<u8> {
         top += 1; left += 1; bottom -= 1; right -= 1;
     }
     v.into_iter().map(|(r, c)| (r * cols as i32 + c) as u8).collect()
-}
-
-/// Espiral: del borde hacia el centro, de una en una
-fn spiral_steps(model: &Model) -> Vec<Step> {
-    let (rows, cols) = model.grid();
-    spiral_order(rows, cols).into_iter().map(|k| vec![k]).collect()
 }
 
 /// Rebote: una tecla que va en diagonal y rebota contra los bordes
@@ -296,13 +293,81 @@ fn rain_steps(model: &Model) -> Vec<Step> {
         .collect()
 }
 
-/// Molino: dos teclas opuestas que dan una vuelta entera por el borde
+/// Anillos de la cuadrícula, de fuera hacia dentro, cada uno en el sentido del reloj
+fn rings(rows: u8, cols: u8) -> Vec<Vec<u8>> {
+    let order = spiral_order(rows, cols);
+    let (mut r, mut c) = (rows as usize, cols as usize);
+    let mut out = vec![];
+    let mut i = 0;
+    while r > 0 && c > 0 && i < order.len() {
+        let len = if r == 1 || c == 1 { r * c } else { 2 * (r + c) - 4 };
+        out.push(order[i..(i + len).min(order.len())].to_vec());
+        i += len;
+        r = r.saturating_sub(2);
+        c = c.saturating_sub(2);
+    }
+    out
+}
+
+/// Molino: dos teclas opuestas dan una vuelta entera por el borde y luego
+/// otra por cada anillo de dentro, así pasa por todas las teclas
 fn windmill_steps(model: &Model) -> Vec<Step> {
     let (rows, cols) = model.grid();
-    let ring_len = if rows < 2 { cols as usize } else { 2 * (rows as usize + cols as usize) - 4 };
-    let ring: Vec<u8> = spiral_order(rows, cols).into_iter().take(ring_len).collect();
-    let l = ring.len();
-    (0..l).map(|i| vec![ring[i], ring[(i + l / 2) % l]]).collect()
+    let mut v = vec![];
+    for ring in rings(rows, cols) {
+        let l = ring.len();
+        if l == 1 {
+            v.push(vec![ring[0]]);
+            continue;
+        }
+        for i in 0..l {
+            let (a, b) = (ring[i], ring[(i + l / 2) % l]);
+            v.push(if a == b { vec![a] } else { vec![a, b] });
+        }
+    }
+    v
+}
+
+/// Cruce: dos teclas en diagonal, una desde arriba y otra desde abajo, que
+/// rebotan en espejo y se cruzan en la fila del centro
+fn cross_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    let last = rows as i32 - 1;
+    let period = (2 * last).max(1);
+    (0..cols as i32)
+        .chain((0..cols as i32 - 1).rev())
+        .enumerate()
+        .map(|(t, c)| {
+            // Fila que "rebota" entre arriba y abajo
+            let p = t as i32 % period;
+            let r = if p <= last { p } else { period - p };
+            let a = (r * cols as i32 + c) as u8;
+            let b = ((last - r) * cols as i32 + c) as u8;
+            if a == b { vec![a] } else { vec![a, b] }
+        })
+        .collect()
+}
+
+/// Vaivén: una pareja (arriba y abajo de la misma columna) va hacia la
+/// derecha y vuelve por la fila del centro, dos teclas cada vez
+fn swing_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    let last = rows - 1;
+    let mut v: Vec<Step> = (0..cols)
+        .map(|c| if last == 0 { vec![c] } else { vec![c, last * cols + c] })
+        .collect();
+    for r in 1..last {
+        let mut c = cols as i32 - 1;
+        while c >= 0 {
+            let mut step = vec![(r * cols) as i32 + c];
+            if c > 0 {
+                step.push((r * cols) as i32 + c - 1);
+            }
+            v.push(step.into_iter().map(|k| k as u8).collect());
+            c -= 2;
+        }
+    }
+    v
 }
 
 /// Flecha: la fila del centro va delante y las demás se retrasan una columna
@@ -321,12 +386,6 @@ fn arrow_steps(model: &Model) -> Vec<Step> {
                 .collect()
         })
         .collect()
-}
-
-/// Filas: 0-5, luego 6-11 (y se apaga la anterior), y así hasta la última
-fn row_steps(model: &Model) -> Vec<Step> {
-    let (rows, cols) = model.grid();
-    (0..rows).map(|r| (0..cols).map(|c| r * cols + c).collect()).collect()
 }
 
 /// Aleatorio: todas las teclas en orden al azar, de una en una, sin repetir
@@ -663,23 +722,33 @@ mod tests {
         assert_eq!(a[2], vec![1, 8, 13]);
         assert_eq!(a.last().unwrap(), &vec![5, 17]);
         assert_eq!(a.len(), 7);
-        let r = row_steps(&one);
-        assert_eq!(r[1], vec![6, 7, 8, 9, 10, 11]);
         // Estela de 3 pasos en la flecha: el 6 pasa por 75 %, 50 %, 25 % y se apaga
         assert_eq!(trail_levels(3), vec![1.0, 0.75, 0.5, 0.25]);
         assert_eq!(trail_levels(1), vec![1.0, 0.5]);
         assert_eq!(trail_levels(10).len(), 4);
         assert_eq!(trail_levels(0), vec![1.0]);
         // Las 6 animaciones ligeras: sin estela, como mucho 4 teclas cambian por paso
-        for steps in [snake_steps(&one), spiral_steps(&one), bounce_steps(&one), meet_steps(&one), rain_steps(&one), windmill_steps(&one)] {
+        for steps in [snake_steps(&one), bounce_steps(&one), meet_steps(&one), rain_steps(&one), windmill_steps(&one), cross_steps(&one), swing_steps(&one)] {
             let worst = trail_frames(&steps, 1).iter().map(|f| f.len()).max().unwrap();
             assert!(worst <= 4, "{worst} cambios en {steps:?}");
         }
         assert_eq!(spiral_order(3, 6), vec![0, 1, 2, 3, 4, 5, 11, 17, 16, 15, 14, 13, 12, 6, 7, 8, 9, 10]);
         assert_eq!(snake_steps(&one)[6], vec![11]);
         assert_eq!(meet_steps(&one)[0], vec![0, 17]);
+        // El Molino y el Vaivén pasan por todas las teclas
+        for steps in [windmill_steps(&one), swing_steps(&one), windmill_steps(&Model::from_vid_pid(0x0b00, 0x1003).unwrap())] {
+            let mut all: Vec<u8> = steps.into_iter().flatten().collect();
+            all.sort();
+            all.dedup();
+            assert_eq!(all.len(), all.last().map_or(0, |&m| m as usize + 1));
+        }
+        assert_eq!(rings(3, 6)[1], vec![7, 8, 9, 10]);
+        assert_eq!(cross_steps(&one)[0], vec![0, 12]);
+        assert_eq!(cross_steps(&one)[1], vec![7]);
+        assert_eq!(swing_steps(&one)[0], vec![0, 12]);
+        assert_eq!(swing_steps(&one)[6], vec![11, 10]);
         let pro = Model::from_vid_pid(0x0b00, 0x1003).unwrap();
-        for steps in [snake_steps(&pro), spiral_steps(&pro), bounce_steps(&pro), meet_steps(&pro), rain_steps(&pro), windmill_steps(&pro)] {
+        for steps in [snake_steps(&pro), bounce_steps(&pro), meet_steps(&pro), rain_steps(&pro), windmill_steps(&pro), cross_steps(&pro), swing_steps(&pro)] {
             assert!(steps.iter().flatten().all(|&k| k < 10));
         }
         // Fijo: se encienden y se quedan; al final, de golpe o con el mismo recorrido
@@ -725,10 +794,10 @@ mod tests {
 fn volcar_pasos() {
     let one = Model::from_vid_pid(0x0b00, 0x1000).unwrap();
     let all = [
-        ("Lineal", chase_steps(&one)), ("Flecha", arrow_steps(&one)), ("Filas", row_steps(&one)),
-        ("Aleatorio", random_steps(&one)), ("Serpiente", snake_steps(&one)), ("Espiral", spiral_steps(&one)),
+        ("Lineal", chase_steps(&one)), ("Flecha", arrow_steps(&one)),
+        ("Aleatorio", random_steps(&one)), ("Serpiente", snake_steps(&one)),
         ("Rebote", bounce_steps(&one)), ("Encuentro", meet_steps(&one)), ("Lluvia", rain_steps(&one)),
-        ("Molino", windmill_steps(&one)),
+        ("Molino", windmill_steps(&one)), ("Cruce", cross_steps(&one)), ("Vaivén", swing_steps(&one)),
     ];
     for (name, steps) in all {
         println!("{name}|{:?}", steps);

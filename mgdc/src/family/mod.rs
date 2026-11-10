@@ -103,34 +103,21 @@ impl Model {
     pub fn anim_kinds(&self) -> &'static [&'static str] {
         if self.supports_animations() {
             &[
-                "none", "cascade", "chase", "arrow", "rows", "random", "snake", "spiral", "bounce", "meet",
-                "rain", "windmill", "wave", "keys", "fade", "gif",
+                "none", "cascade", "chase", "arrow", "random", "snake", "bounce", "meet", "rain", "windmill",
+                "cross", "swing", "wave", "keys", "fade", "gif",
             ]
         } else {
             &[
-                "none", "cascade", "chase", "arrow", "rows", "random", "snake", "spiral", "bounce", "meet",
-                "rain", "windmill",
+                "none", "cascade", "chase", "arrow", "random", "snake", "bounce", "meet", "rain", "windmill",
+                "cross", "swing",
             ]
         }
     }
 
+    /// La animación está en la lista de este deck (las retiradas no lo están)
     pub fn allows_animation(&self, kind: &crate::settings::AnimKind) -> bool {
-        use crate::settings::AnimKind;
-        matches!(
-            kind,
-            AnimKind::None
-                | AnimKind::Cascade
-                | AnimKind::Chase
-                | AnimKind::Arrow
-                | AnimKind::Rows
-                | AnimKind::Random
-                | AnimKind::Snake
-                | AnimKind::Spiral
-                | AnimKind::Bounce
-                | AnimKind::Meet
-                | AnimKind::Rain
-                | AnimKind::Windmill
-        ) || self.supports_animations()
+        let name = serde_json::to_value(kind).ok().and_then(|v| v.as_str().map(str::to_string));
+        name.is_some_and(|n| self.anim_kinds().contains(&n.as_str()))
     }
 
     /// Borra una tecla (o un trozo de la pantalla de las ruedas) sin enviarlo todavía
