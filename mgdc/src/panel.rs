@@ -52,7 +52,7 @@ static PORT: OnceLock<u16> = OnceLock::new();
 const PANEL_HTML: &str = include_str!("../panel/index.html");
 
 /// Solo se aceptan cambios desde el propio panel (no desde otras webs)
-fn origin_ok(headers: &HeaderMap) -> bool {
+pub(crate) fn origin_ok(headers: &HeaderMap) -> bool {
     match headers.get("origin").and_then(|v| v.to_str().ok()) {
         None => true,
         Some(origin) => PORT
@@ -199,7 +199,7 @@ async fn save_palettes(headers: HeaderMap, Json(body): Json<Vec<Palette>>) -> im
 }
 
 /// Vuelve a pedir a OpenDeck las imágenes de las teclas
-async fn rerender(id: &str) {
+pub(crate) async fn rerender(id: &str) {
     if let Some(outbound) = OUTBOUND_EVENT_MANAGER.lock().await.as_mut() {
         let _ = outbound.rerender_images(id.to_string()).await;
     }
@@ -436,6 +436,8 @@ pub async fn serve() {
         .route("/api/reset", post(reset))
         .route("/api/calibration/test", post(calibration_test))
         .route("/api/calibration/stop", post(calibration_stop))
+        // PRUEBAS: numerar pantallas (borrar luego)
+        .merge(crate::debug_numbers::routes())
         .layer(DefaultBodyLimit::max(32 * 1024 * 1024));
 
     let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {

@@ -272,6 +272,19 @@
         </div>
       </div>
 
+      <!-- PRUEBAS: numerar pantallas (borrar luego) -->
+      <div class="card" data-tab="info" style="border-style:dashed">
+        <p class="lbl">Pruebas · numerar pantallas</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button id="dbgNumber">Poner números</button>
+          <button id="dbgClear">Quitar números</button>
+          <button id="dbgRestore">Volver a mis iconos</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:8px 0 0">Grande: orden en que se pintan. Abajo: OD = posición en OpenDeck, HW = índice real en el deck.</p>
+        <div id="dbgTable" style="font:12px/1.6 ui-monospace,Consolas,monospace;color:var(--muted);margin-top:8px;white-space:pre"></div>
+      </div>
+      <!-- /PRUEBAS -->
+
       <div style="display:flex;gap:8px;align-items:center">
         <span id="msg" class="msg" style="flex:1"></span>
         <button id="close" data-t="close"></button>
@@ -771,6 +784,22 @@ $('calReset').onclick = () => { draft.calibration[calZone] = { ...CAL0 }; calAdj
 $('calTest').onclick = () => { calAdj(); calOn = true; fillCal(); sendCal(''); };
 $('calStop').onclick = stopCal;
 window.addEventListener('pagehide', () => { if (calOn) navigator.sendBeacon('/api/calibration/stop', new Blob([JSON.stringify({ id: current.id })], { type: 'application/json' })); });
+
+// PRUEBAS: numerar pantallas (borrar luego)
+$('dbgNumber').onclick = async () => {
+  const b = $('dbgNumber'); b.disabled = true; $('dbgTable').textContent = ''; msg('Numerando…', 'wait');
+  try {
+    const r = await api('/api/debug/number', { id: current.id });
+    if (r.error) throw new Error(r.error);
+    $('dbgTable').textContent = 'orden  OpenDeck  deck\n' + r.table.map((x) =>
+      `${String(x.order).padStart(5)}  ${String(x.opendeck).padStart(4)}${x.encoder ? ' rueda' : '      '}  ${String(x.hardware).padStart(4)}`).join('\n');
+    msg('');
+  } catch (e) { msg(e.message, 'err'); }
+  b.disabled = false;
+};
+$('dbgClear').onclick = () => api('/api/debug/clear', { id: current.id }).catch((e) => msg(e.message, 'err'));
+$('dbgRestore').onclick = () => api('/api/debug/restore', { id: current.id }).catch((e) => msg(e.message, 'err'));
+// /PRUEBAS
 
 $('identify').onclick = () => api('/api/identify', { id: current.id }).catch((e) => msg(e.message, 'err'));
 $('save').onclick = async () => {
