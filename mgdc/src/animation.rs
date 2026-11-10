@@ -107,7 +107,7 @@ pub async fn play(
     let frames = match anim.kind {
         AnimKind::None => return Ok(()),
         AnimKind::Gif => play_gif(device, model, &cal, id, closing).await?,
-        AnimKind::Chase => play_chase(device, model, &cal, anim).await?,
+        AnimKind::Chase => play_steps(device, model, &cal, anim, chase_steps(model)).await?,
         AnimKind::Arrow => play_steps(device, model, &cal, anim, arrow_steps(model)).await?,
         AnimKind::Rows => play_steps(device, model, &cal, anim, row_steps(model)).await?,
         AnimKind::Random => play_steps(device, model, &cal, anim, random_steps(model)).await?,
@@ -192,44 +192,14 @@ async fn play_effect(
     Ok(frames)
 }
 
-/// Lineal: se enciende la tecla 0; luego la 1 y se apaga la 0; y así hasta la
-/// última. Cada paso cambia solo dos teclas, así que el MSD-ONE lo aguanta.
-async fn play_chase(
-    device: &Device,
-    model: &Model,
-    cal: &Calibration,
-    anim: &Animation,
-) -> Result<usize, MirajazzError> {
-    let (rows, cols) = model.grid();
-    let n = rows as usize * cols as usize;
-    let colors = palette(anim);
-    let (base, per_key) = model.anim_pacing();
-    // El total repartido entre las teclas, pero nunca más rápido de lo que aguanta el deck
-    let min = Duration::from_millis(base + per_key * 2);
-    let step = (Duration::from_millis(anim.duration_ms.clamp(300, 8000) as u64) / n as u32).max(min);
-    log::info!("Animación lineal: {n} teclas, {} ms por tecla", step.as_millis());
-    let mut rng = Rng::new();
-
-    for i in 0..n {
-        let t = Instant::now();
-        let pos = i as u8;
-        let c = if anim.random_colors { random_color(&mut rng) } else { sample(&colors, i as f32 / n as f32) };
-        model.draw_key(device, pos, model.calibrate(cal, pos, false, solid(c))).await?;
-        if i > 0 {
-            model.clear_key(device, pos - 1, false).await?;
-        }
-        device.flush().await?;
-        if let Some(rest) = step.checked_sub(t.elapsed()) {
-            tokio::time::sleep(rest).await;
-        }
-    }
-    model.clear_key(device, (n - 1) as u8, false).await?;
-    device.flush().await?;
-    Ok(n)
-}
-
 /// Un paso de animación: las teclas (posiciones de OpenDeck) encendidas en ese momento
 type Step = Vec<u8>;
+
+/// Lineal: 0, 1, 2… hasta la última, de una en una
+fn chase_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    (0..rows * cols).map(|k| vec![k]).collect()
+}
 
 /// Flecha: la fila del centro va delante y las demás se retrasan una columna
 /// por cada fila de distancia. En el MSD-ONE (3×6): 6 → 7,0,12 → 8,1,13 → … → 5,17.
@@ -303,42 +273,40 @@ fn random_color(rng: &mut Rng) -> [u8; 3] {
     [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8]
 }
 
-/// Brillo de una tecla en un paso de la animación
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum Level {
-    Full,
-    /// Estela: al 50 % el paso siguiente a apagarse
-    Half,
-    Off,
-}
+/// Estela: brillo de una tecla en los pasos siguientes a apagarse
+/// (encendida → 70 % → 30 % → 10 % → apagada)
+const TRAIL: [f32; 4] = [1.0, 0.7, 0.3, 0.1];
+
+/// Brillo de una tecla en un paso: `Some(i)` = `TRAIL[i]`, `None` = apagada
+type Level = Option<usize>;
 
 /// Convierte los pasos (teclas encendidas) en cambios con estela: lo que deja
-/// de estar encendido pasa al 50 % y, un paso después, se apaga del todo.
-/// Se añade un paso más al final para que también se apague la última estela.
+/// de estar encendido va bajando por `TRAIL` un escalón por paso hasta
+/// apagarse. Al final se añaden pasos para que también se apague la última estela.
 fn trail_frames(steps: &[Step]) -> Vec<Vec<(u8, Level)>> {
     use std::collections::HashMap;
-    let mut state: HashMap<u8, Level> = HashMap::new();
+    let mut state: HashMap<u8, usize> = HashMap::new();
     let mut frames = vec![];
     let empty: Step = vec![];
-    for step in steps.iter().chain([&empty, &empty]) {
+    for step in steps.iter().chain(std::iter::repeat_n(&empty, TRAIL.len())) {
         let mut changes = vec![];
         let mut keys: Vec<u8> = state.keys().copied().chain(step.iter().copied()).collect();
         keys.sort();
         keys.dedup();
         for k in keys {
-            let before = *state.get(&k).unwrap_or(&Level::Off);
+            let before = state.get(&k).copied();
             let after = if step.contains(&k) {
-                Level::Full
+                Some(0)
             } else {
-                match before {
-                    Level::Full => Level::Half,
-                    _ => Level::Off,
-                }
+                before.map(|i| i + 1).filter(|&i| i < TRAIL.len())
             };
             if after != before {
                 changes.push((k, after));
             }
-            if after == Level::Off { state.remove(&k); } else { state.insert(k, after); }
+            match after {
+                Some(i) => { state.insert(k, i); }
+                None => { state.remove(&k); }
+            }
         }
         if !changes.is_empty() {
             frames.push(changes);
@@ -371,11 +339,11 @@ async fn play_steps(
         let t = Instant::now();
         for &(k, level) in changes {
             match level {
-                Level::Off => {
+                None => {
                     model.clear_key(device, k, false).await?;
                     color_of.remove(&k);
                 }
-                Level::Full => {
+                Some(0) => {
                     let c = if anim.random_colors {
                         random_color(&mut rng)
                     } else {
@@ -384,8 +352,8 @@ async fn play_steps(
                     color_of.insert(k, c);
                     model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
                 }
-                Level::Half => {
-                    let c = scale(*color_of.get(&k).unwrap_or(&[255, 255, 255]), 0.5);
+                Some(t) => {
+                    let c = scale(*color_of.get(&k).unwrap_or(&[255, 255, 255]), TRAIL[t]);
                     model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
                 }
             }
@@ -398,7 +366,7 @@ async fn play_steps(
             tokio::time::sleep(rest).await;
         }
     }
-    log::info!("Animación {:?}: {n} pasos con estela, hasta {slowest} ms por paso", anim.kind);
+    log::info!("Animación {:?}: {n} pasos con estela (70/30/10 %), hasta {slowest} ms por paso", anim.kind);
     Ok(n)
 }
 
@@ -544,13 +512,20 @@ mod tests {
         assert_eq!(a.len(), 7);
         let r = row_steps(&one);
         assert_eq!(r[1], vec![6, 7, 8, 9, 10, 11]);
-        // Estela de la flecha: en el segundo paso el 6 baja al 50 %, en el tercero se apaga
+        // Estela de la flecha: el 6 pasa por 70 %, 30 %, 10 % y se apaga
         let f = trail_frames(&a);
-        assert!(f[1].contains(&(6, Level::Half)) && f[1].contains(&(7, Level::Full)));
-        assert!(f[2].contains(&(6, Level::Off)) && f[2].contains(&(7, Level::Half)) && f[2].contains(&(8, Level::Full)));
-        // Al final: 5 y 17 al 50 % y luego apagados
-        assert_eq!(f.len(), a.len() + 2);
-        assert!(f.last().unwrap().iter().all(|&(_, l)| l == Level::Off));
+        assert!(f[1].contains(&(6, Some(1))) && f[1].contains(&(7, Some(0))));
+        assert!(f[2].contains(&(6, Some(2))) && f[2].contains(&(7, Some(1))) && f[2].contains(&(8, Some(0))));
+        assert!(f[3].contains(&(6, Some(3))));
+        assert!(f[4].contains(&(6, None)));
+        // Al final: 5 y 17 bajan y se apagan
+        assert_eq!(f.len(), a.len() + TRAIL.len());
+        assert!(f.last().unwrap().iter().all(|&(_, l)| l.is_none()));
+        // Lineal: 0 → 70 % → 30 % → 10 % → apagado
+        let l = trail_frames(&chase_steps(&one));
+        assert_eq!(l[0], vec![(0, Some(0))]);
+        assert_eq!(l[1], vec![(0, Some(1)), (1, Some(0))]);
+        assert_eq!(l[4], vec![(0, None), (1, Some(3)), (2, Some(2)), (3, Some(1)), (4, Some(0))]);
         let mut all: Vec<u8> = random_steps(&one).into_iter().flatten().collect();
         all.sort();
         assert_eq!(all, (0..18).collect::<Vec<u8>>());
