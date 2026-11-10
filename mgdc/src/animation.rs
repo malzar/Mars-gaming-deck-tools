@@ -18,7 +18,7 @@ use tokio::sync::Mutex;
 
 use crate::{
     family::Model,
-    settings::{AnimKind, Animation, parse_hex},
+    settings::{AnimKind, Animation, Calibration, parse_hex},
 };
 
 /// Decks con una animación en marcha: mientras tanto se ignoran las imágenes
@@ -102,11 +102,13 @@ pub async fn play(
     brightness: u8,
 ) -> Result<(), MirajazzError> {
     let start = Instant::now();
+    // Las animaciones también respetan la calibración de iconos
+    let cal = crate::settings::for_device(id).await.calibration;
     let frames = match anim.kind {
         AnimKind::None => return Ok(()),
-        AnimKind::Gif => play_gif(device, model, id, closing).await?,
-        AnimKind::Fade => play_fade(device, model, anim, closing, brightness).await?,
-        _ => play_effect(device, model, anim, closing).await?,
+        AnimKind::Gif => play_gif(device, model, &cal, id, closing).await?,
+        AnimKind::Fade => play_fade(device, model, &cal, anim, closing, brightness).await?,
+        _ => play_effect(device, model, &cal, anim, closing).await?,
     };
     log::info!(
         "Animación {:?} ({}) en {id}: {frames} fotogramas en {} ms",
@@ -129,6 +131,7 @@ fn palette(anim: &Animation) -> Vec<[u8; 3]> {
 async fn play_effect(
     device: &Device,
     model: &Model,
+    cal: &Calibration,
     anim: &Animation,
     closing: bool,
 ) -> Result<usize, MirajazzError> {
@@ -167,7 +170,7 @@ async fn play_effect(
                 let c = scale(base, a);
                 if last[i] != Some(c) {
                     last[i] = Some(c);
-                    model.draw_key(device, i as u8, solid(c)).await?;
+                    model.draw_key(device, i as u8, model.calibrate(cal, i as u8, false, solid(c))).await?;
                     sent += 1;
                 }
             }
@@ -190,6 +193,7 @@ async fn play_effect(
 async fn play_fade(
     device: &Device,
     model: &Model,
+    cal: &Calibration,
     anim: &Animation,
     closing: bool,
     brightness: u8,
@@ -207,7 +211,7 @@ async fn play_fade(
         for y in 0..rows {
             for x in 0..cols {
                 let c = sample(&colors, (x as f32 + y as f32) / (cols as f32 + rows as f32));
-                model.draw_key(device, y * cols + x, solid(c)).await?;
+                model.draw_key(device, y * cols + x, model.calibrate(cal, y * cols + x, false, solid(c))).await?;
             }
         }
         device.flush().await?;
@@ -235,7 +239,7 @@ async fn play_fade(
     Ok(frames)
 }
 
-async fn play_gif(device: &Device, model: &Model, id: &str, closing: bool) -> Result<usize, MirajazzError> {
+async fn play_gif(device: &Device, model: &Model, cal: &Calibration, id: &str, closing: bool) -> Result<usize, MirajazzError> {
     let which = if closing { "shutdown" } else { "startup" };
     let Some(bytes) = gif_path(id, which).and_then(|p| std::fs::read(p).ok()) else {
         log::warn!("No hay GIF de {which} para {id}");
@@ -279,7 +283,8 @@ async fn play_gif(device: &Device, model: &Model, id: &str, closing: bool) -> Re
         for y in 0..rows as u32 {
             for x in 0..cols as u32 {
                 let tile = canvas.crop_imm(x * k, y * k, k, k);
-                model.draw_key(device, (y * cols as u32 + x) as u8, tile).await?;
+                let pos = (y * cols as u32 + x) as u8;
+                model.draw_key(device, pos, model.calibrate(cal, pos, false, tile)).await?;
             }
         }
         device.flush().await?;

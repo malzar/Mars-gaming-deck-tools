@@ -224,6 +224,32 @@ impl Model {
         Ok(sent)
     }
 
+    /// Aplica la calibración guardada a una imagen antes de pintarla.
+    /// `encoder` = es un trozo de la pantalla de las ruedas (MSD-PRO).
+    pub fn calibrate(
+        &self,
+        cal: &crate::settings::Calibration,
+        position: u8,
+        encoder: bool,
+        image: image::DynamicImage,
+    ) -> image::DynamicImage {
+        use crate::calibration::{adjust_for, apply_sized};
+        match self {
+            Model::Akp153(k) => {
+                let f = akp153::get_image_format_for_key(k, position);
+                apply_sized(image, adjust_for(cal, position), (f.size.0 as u32, f.size.1 as u32))
+            }
+            Model::Akp05(k) if encoder => {
+                let f = k.touch_image_format();
+                apply_sized(image, cal.strip, (f.size.0 as u32, f.size.1 as u32))
+            }
+            Model::Akp05(_) => {
+                let s = self.key_size();
+                apply_sized(image, cal.keys, (s, s))
+            }
+        }
+    }
+
     /// Pinta una tecla sin enviarla todavía (hay que llamar a `device.flush()`)
     pub async fn draw_key(
         &self,
