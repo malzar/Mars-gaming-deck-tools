@@ -9,7 +9,7 @@ Un solo plugin de **OpenDeck** para controlar los dos decks de Mars Gaming y sus
 
 Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*. **No los tengas instalados a la vez**, porque se pelearían por los decks.
 
-> Estado: **0.6.1**. Novedades: panel organizado en pestañas y calibración de iconos también en el MSD-PRO.
+> Estado: **0.7.0**. Novedades: animaciones Lineal, Flecha, Filas y Aleatorio con estela (también en el MSD-ONE), colores aleatorios, y la calibración se aplica a todo lo que pinta el plugin.
 
 ## Instalación
 
@@ -34,7 +34,7 @@ En OpenDeck: **Plugins → MGDC → Ajustes del plugin**. Se abre una ventana co
   - *Horario fijo*: a qué hora empieza el día y a qué hora la noche.
   - Brillo de día, brillo de noche y una transición suave de X minutos.
 - **Fondo del deck**: elige una imagen, ajústala (rellenar o encajar, con color de relleno) y pulsa *Aplicar al deck*. Se guarda en la memoria del propio deck, así que se ve también al arrancar y sin OpenDeck. Si un clon lo pinta girado o en espejo, hay una corrección de orientación.
-- **Animaciones de arranque y de cierre**: *Tus iconos* (aparecen y se van de uno en uno), ola, tecla a tecla, fundido o un GIF propio repartido por las teclas, con un color o una paleta. El cierre se ve al cerrar OpenDeck (al apagar el PC puede no dar tiempo). El MSD-ONE solo admite *Tus iconos*; al cerrar siempre deja la imagen de fondo.
+- **Animaciones de arranque y de cierre**: *Tus iconos* (aparecen y se van de uno en uno), *Lineal*, *Flecha*, *Filas* y *Aleatorio* (con estela que baja al 70, 30 y 10 %), ola, tecla a tecla, fundido o un GIF propio repartido por las teclas, con un color o una paleta. El cierre se ve al cerrar OpenDeck (al apagar el PC puede no dar tiempo). El MSD-ONE solo admite las que cambian pocas teclas a la vez (*Tus iconos*, *Lineal*, *Flecha*, *Filas* y *Aleatorio*); al cerrar siempre deja la imagen de fondo.
 - **Paletas**: 10 de serie (Arcoíris, Pastel, Aurora, Atardecer, Océano, Fuego, Synthwave, Hielo, Bosque y Neón) y las que crees tú.
 - **Información**: modelo, VID:PID, número de serie, protocolo y pantalla; botones para identificar, reiniciar el deck y copiar los datos.
 - **Calibración de iconos**: el firmware puede recortar y desplazar un poco cada icono. Con una imagen de prueba en el deck se ajustan el desplazamiento y el tamaño por zonas: teclas e iconos laterales en el MSD-ONE, teclas y pantalla de las ruedas en el MSD-PRO.
