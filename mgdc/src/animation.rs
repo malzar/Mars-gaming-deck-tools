@@ -240,18 +240,36 @@ fn spiral_order(rows: u8, cols: u8) -> Vec<u8> {
     v.into_iter().map(|(r, c)| (r * cols as i32 + c) as u8).collect()
 }
 
-/// Rebote: una tecla que va en diagonal y rebota contra los bordes
+/// Rebote: una tecla que va en diagonal y rebota contra los bordes. En
+/// diagonal solo pisa la mitad de las teclas (como los alfiles en el ajedrez),
+/// así que al terminar esa mitad sigue desde la tecla de al lado con la otra.
 fn bounce_steps(model: &Model) -> Vec<Step> {
     let (rows, cols) = model.grid();
-    let (mut r, mut c, mut dr, mut dc) = (0i32, 0i32, 1i32, 1i32);
-    let n = 2 * (cols as usize - 1) + 1;
+    let (rows, cols) = (rows as i32, cols as i32);
+    let total = (rows * cols) as usize;
+    let mut seen = std::collections::HashSet::new();
     let mut v = vec![];
-    for _ in 0..n {
-        v.push(vec![(r * cols as i32 + c) as u8]);
-        if rows > 1 && !(0..rows as i32).contains(&(r + dr)) { dr = -dr; }
-        if !(0..cols as i32).contains(&(c + dc)) { dc = -dc; }
-        if rows > 1 { r += dr; }
-        c += dc;
+    for (mut r, mut c) in [(0i32, 0i32), (0, 1.min(cols - 1))] {
+        let (mut dr, mut dc) = (1i32, 1i32);
+        for _ in 0..4 * total {
+            let k = (r * cols + c) as u8;
+            v.push(vec![k]);
+            seen.insert(k);
+            // Esta mitad ya está completa
+            let parity = (r + c) % 2;
+            let half = (0..rows * cols).filter(|i| (i / cols + i % cols) % 2 == parity).count();
+            let done = seen.iter().filter(|&&i| (i as i32 / cols + i as i32 % cols) % 2 == parity).count();
+            if done == half || seen.len() == total {
+                break;
+            }
+            if rows > 1 && !(0..rows).contains(&(r + dr)) { dr = -dr; }
+            if !(0..cols).contains(&(c + dc)) { dc = -dc; }
+            if rows > 1 { r += dr; }
+            c += dc;
+        }
+        if seen.len() == total {
+            break;
+        }
     }
     v
 }
@@ -329,23 +347,24 @@ fn windmill_steps(model: &Model) -> Vec<Step> {
 }
 
 /// Cruce: dos teclas en diagonal, una desde arriba y otra desde abajo, que
-/// rebotan en espejo y se cruzan en la fila del centro
+/// rebotan en espejo y se cruzan en la fila del centro. A la ida pisan la
+/// mitad de las teclas; a la vuelta van desfasadas una fila y pisan la otra mitad.
 fn cross_steps(model: &Model) -> Vec<Step> {
     let (rows, cols) = model.grid();
     let last = rows as i32 - 1;
     let period = (2 * last).max(1);
-    (0..cols as i32)
-        .chain((0..cols as i32 - 1).rev())
-        .enumerate()
-        .map(|(t, c)| {
-            // Fila que "rebota" entre arriba y abajo
-            let p = t as i32 % period;
-            let r = if p <= last { p } else { period - p };
-            let a = (r * cols as i32 + c) as u8;
-            let b = ((last - r) * cols as i32 + c) as u8;
-            if a == b { vec![a] } else { vec![a, b] }
-        })
-        .collect()
+    let row = |t: i32| {
+        let p = t.rem_euclid(period);
+        if p <= last { p } else { period - p }
+    };
+    let pair = |r: i32, c: i32| {
+        let a = (r * cols as i32 + c) as u8;
+        let b = ((last - r) * cols as i32 + c) as u8;
+        if a == b { vec![a] } else { vec![a, b] }
+    };
+    let ida = (0..cols as i32).map(|c| pair(row(c), c));
+    let vuelta = (0..cols as i32).rev().map(|c| pair(row(c + 1), c));
+    ida.chain(vuelta).collect()
 }
 
 /// Vaivén: una pareja (arriba y abajo de la misma columna) va hacia la
@@ -735,8 +754,12 @@ mod tests {
         assert_eq!(spiral_order(3, 6), vec![0, 1, 2, 3, 4, 5, 11, 17, 16, 15, 14, 13, 12, 6, 7, 8, 9, 10]);
         assert_eq!(snake_steps(&one)[6], vec![11]);
         assert_eq!(meet_steps(&one)[0], vec![0, 17]);
-        // El Molino y el Vaivén pasan por todas las teclas
-        for steps in [windmill_steps(&one), swing_steps(&one), windmill_steps(&Model::from_vid_pid(0x0b00, 0x1003).unwrap())] {
+        // Molino, Vaivén, Rebote y Cruce pasan por todas las teclas
+        let pro = Model::from_vid_pid(0x0b00, 0x1003).unwrap();
+        for steps in [
+            windmill_steps(&one), swing_steps(&one), bounce_steps(&one), cross_steps(&one),
+            windmill_steps(&pro), swing_steps(&pro), bounce_steps(&pro), cross_steps(&pro),
+        ] {
             let mut all: Vec<u8> = steps.into_iter().flatten().collect();
             all.sort();
             all.dedup();
@@ -745,6 +768,7 @@ mod tests {
         assert_eq!(rings(3, 6)[1], vec![7, 8, 9, 10]);
         assert_eq!(cross_steps(&one)[0], vec![0, 12]);
         assert_eq!(cross_steps(&one)[1], vec![7]);
+        assert_eq!(cross_steps(&one)[6], vec![17, 5]);
         assert_eq!(swing_steps(&one)[0], vec![0, 12]);
         assert_eq!(swing_steps(&one)[6], vec![11, 10]);
         let pro = Model::from_vid_pid(0x0b00, 0x1003).unwrap();
