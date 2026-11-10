@@ -64,16 +64,32 @@ pub enum AnimKind {
     Fade,
     /// GIF propio repartido por la cuadrícula de teclas
     Gif,
-    /// Tus propios iconos aparecen (o se van) tecla a tecla
+    /// Retirada ("Tus iconos"; se conserva para no romper ajustes guardados)
     Cascade,
     /// Una sola tecla encendida que recorre el deck de la primera a la última
     Chase,
     /// Flecha que avanza de izquierda a derecha: la fila del centro va delante
     Arrow,
-    /// Se enciende una fila entera, luego la siguiente y se apaga la anterior
+    /// Retirada (se conserva para no romper ajustes guardados; se trata como Ninguna)
     Rows,
     /// Teclas al azar, de una en una y sin repetir
     Random,
+    /// Zigzag: una fila a la derecha, la siguiente a la izquierda
+    Snake,
+    /// Retirada (se conserva para no romper ajustes guardados; se trata como Ninguna)
+    Spiral,
+    /// Una tecla que rebota en diagonal contra los bordes
+    Bounce,
+    /// Dos teclas que salen de los extremos y se encuentran en el centro
+    Meet,
+    /// Gotas que caen por columnas al azar
+    Rain,
+    /// Dos teclas opuestas que giran por el borde y luego por el centro
+    Windmill,
+    /// Dos teclas que rebotan en diagonal en espejo y se cruzan
+    Cross,
+    /// Pareja arriba-abajo hacia la derecha y vuelta por la fila del centro
+    Swing,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,6 +103,12 @@ pub struct Animation {
     pub colors: Vec<String>,
     /// Cada tecla de un color al azar (en vez de los colores de arriba)
     pub random_colors: bool,
+    /// Pasos de estela (1-3): cuántos pasos tarda en apagarse una tecla
+    pub trail: u8,
+    /// Fijo: sin estela, las teclas se quedan encendidas y al final se apagan todas de golpe
+    pub fixed: bool,
+    /// Invertir: de abajo arriba y de derecha a izquierda (girada 180°)
+    pub reverse: bool,
 }
 
 impl Animation {
@@ -100,6 +122,9 @@ impl Animation {
                 "#00b3ff".into(), "#5a3dff".into(), "#d400ff".into(),
             ],
             random_colors: false,
+            trail: 3,
+            fixed: false,
+            reverse: false,
         }
     }
 }

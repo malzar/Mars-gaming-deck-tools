@@ -72,7 +72,7 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
 
     // Animación de arranque, antes de que OpenDeck pinte las teclas
     let startup = settings::for_device(&candidate.id).await.animations.startup;
-    if startup.kind == settings::AnimKind::Cascade {
+    if startup.kind == settings::AnimKind::Cascade && candidate.model.allows_animation(&startup.kind) {
         // Las imágenes que mande OpenDeck al registrar el deck saldrán en cascada
         tokio::spawn(reveal::appear(
             candidate.id.clone(),
@@ -166,7 +166,10 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     if let Some(device) = DEVICES.read().await.get(&candidate.id) {
         // Cierre ordenado (se cierra OpenDeck): animación de cierre
         let anims = settings::for_device(&candidate.id).await.animations;
-        if token.is_cancelled() && anims.shutdown.kind == settings::AnimKind::Cascade {
+        if token.is_cancelled()
+            && anims.shutdown.kind == settings::AnimKind::Cascade
+            && candidate.model.allows_animation(&anims.shutdown.kind)
+        {
             let level = power::screen_level(&candidate.id).await;
             if let Err(e) = reveal::disappear(device, &candidate.model, anims.shutdown.duration_ms).await {
                 log::warn!("Animación de cierre: {e}");

@@ -28,8 +28,6 @@ mod animation;
 mod background;
 mod calibration;
 mod config;
-// PRUEBAS: numerar pantallas (borrar luego)
-mod debug_numbers;
 mod device;
 mod family;
 mod led_config;
