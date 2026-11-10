@@ -436,8 +436,6 @@ pub async fn serve() {
         .route("/api/reset", post(reset))
         .route("/api/calibration/test", post(calibration_test))
         .route("/api/calibration/stop", post(calibration_stop))
-        // PRUEBAS: numerar pantallas (borrar luego)
-        .merge(crate::debug_numbers::routes())
         .layer(DefaultBodyLimit::max(32 * 1024 * 1024));
 
     let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {
