@@ -9,7 +9,7 @@ Un solo plugin de **OpenDeck** para controlar los dos decks de Mars Gaming y sus
 
 Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*. **No los tengas instalados a la vez**, porque se pelearían por los decks.
 
-> Estado: **0.6.0**. Novedades: panel organizado en pestañas y calibración de iconos también en el MSD-PRO.
+> Estado: **0.6.1**. Novedades: panel organizado en pestañas y calibración de iconos también en el MSD-PRO.
 
 ## Instalación
 
