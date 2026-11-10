@@ -112,6 +112,12 @@ pub async fn play(
         AnimKind::Rows => play_steps(device, model, &cal, anim, row_steps(model), row_steps(model)).await?,
         // Al apagar "igual", la aleatoria usa otro orden al azar
         AnimKind::Random => play_steps(device, model, &cal, anim, random_steps(model), random_steps(model)).await?,
+        AnimKind::Snake => play_steps(device, model, &cal, anim, snake_steps(model), snake_steps(model)).await?,
+        AnimKind::Spiral => play_steps(device, model, &cal, anim, spiral_steps(model), spiral_steps(model)).await?,
+        AnimKind::Bounce => play_steps(device, model, &cal, anim, bounce_steps(model), bounce_steps(model)).await?,
+        AnimKind::Meet => play_steps(device, model, &cal, anim, meet_steps(model), meet_steps(model)).await?,
+        AnimKind::Rain => play_steps(device, model, &cal, anim, rain_steps(model), rain_steps(model)).await?,
+        AnimKind::Windmill => play_steps(device, model, &cal, anim, windmill_steps(model), windmill_steps(model)).await?,
         AnimKind::Fade => play_fade(device, model, &cal, anim, closing, brightness).await?,
         _ => play_effect(device, model, &cal, anim, closing).await?,
     };
@@ -202,6 +208,103 @@ fn chase_steps(model: &Model) -> Vec<Step> {
     (0..rows * cols).map(|k| vec![k]).collect()
 }
 
+// ----- Animaciones ligeras: como mucho 2 teclas encendidas por paso, así que
+// sin estela cambian 4 teclas por paso como máximo (2 se encienden, 2 se apagan)
+
+/// Serpiente: fila 0 de izquierda a derecha, fila 1 de derecha a izquierda…
+fn snake_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    (0..rows)
+        .flat_map(|r| {
+            let cs: Vec<u8> = if r % 2 == 0 { (0..cols).collect() } else { (0..cols).rev().collect() };
+            cs.into_iter().map(move |c| vec![r * cols + c])
+        })
+        .collect()
+}
+
+/// Orden de las teclas en espiral (borde exterior en el sentido del reloj, y hacia dentro)
+fn spiral_order(rows: u8, cols: u8) -> Vec<u8> {
+    let (mut top, mut left) = (0i32, 0i32);
+    let (mut bottom, mut right) = (rows as i32 - 1, cols as i32 - 1);
+    let mut v = vec![];
+    while top <= bottom && left <= right {
+        for c in left..=right { v.push((top, c)); }
+        for r in top + 1..=bottom { v.push((r, right)); }
+        if top < bottom { for c in (left..right).rev() { v.push((bottom, c)); } }
+        if left < right { for r in (top + 1..bottom).rev() { v.push((r, left)); } }
+        top += 1; left += 1; bottom -= 1; right -= 1;
+    }
+    v.into_iter().map(|(r, c)| (r * cols as i32 + c) as u8).collect()
+}
+
+/// Espiral: del borde hacia el centro, de una en una
+fn spiral_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    spiral_order(rows, cols).into_iter().map(|k| vec![k]).collect()
+}
+
+/// Rebote: una tecla que va en diagonal y rebota contra los bordes
+fn bounce_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    let (mut r, mut c, mut dr, mut dc) = (0i32, 0i32, 1i32, 1i32);
+    let n = 2 * (cols as usize - 1) + 1;
+    let mut v = vec![];
+    for _ in 0..n {
+        v.push(vec![(r * cols as i32 + c) as u8]);
+        if rows > 1 && !(0..rows as i32).contains(&(r + dr)) { dr = -dr; }
+        if !(0..cols as i32).contains(&(c + dc)) { dc = -dc; }
+        if rows > 1 { r += dr; }
+        c += dc;
+    }
+    v
+}
+
+/// Encuentro: una tecla sale del principio y otra del final y se cruzan en el centro
+fn meet_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    let n = rows as usize * cols as usize;
+    (0..n.div_ceil(2))
+        .map(|i| {
+            let (a, b) = (i as u8, (n - 1 - i) as u8);
+            if a == b { vec![a] } else { vec![a, b] }
+        })
+        .collect()
+}
+
+/// Lluvia: gotas que caen por columnas al azar; cada gota empieza cuando la
+/// anterior va por la penúltima fila, así nunca hay más de 2 a la vez
+fn rain_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    let mut order: Vec<u8> = (0..cols).collect();
+    let mut rng = Rng::new();
+    for i in (1..order.len()).rev() {
+        order.swap(i, rng.below(i + 1));
+    }
+    let gap = (rows as usize).saturating_sub(1).max(1);
+    let total = gap * (order.len() - 1) + rows as usize;
+    (0..total)
+        .map(|t| {
+            order
+                .iter()
+                .enumerate()
+                .filter_map(|(d, &c)| {
+                    let row = t as i64 - (d * gap) as i64;
+                    (0..rows as i64).contains(&row).then(|| row as u8 * cols + c)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Molino: dos teclas opuestas que dan una vuelta entera por el borde
+fn windmill_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    let ring_len = if rows < 2 { cols as usize } else { 2 * (rows as usize + cols as usize) - 4 };
+    let ring: Vec<u8> = spiral_order(rows, cols).into_iter().take(ring_len).collect();
+    let l = ring.len();
+    (0..l).map(|i| vec![ring[i], ring[(i + l / 2) % l]]).collect()
+}
+
 /// Flecha: la fila del centro va delante y las demás se retrasan una columna
 /// por cada fila de distancia. En el MSD-ONE (3×6): 6 → 7,0,12 → 8,1,13 → … → 5,17.
 fn arrow_steps(model: &Model) -> Vec<Step> {
@@ -278,7 +381,7 @@ fn random_color(rng: &mut Rng) -> [u8; 3] {
 /// Con `n` pasos baja en línea recta hasta apagarse; con 3, por ejemplo:
 /// encendida → 75 % → 50 % → 25 % → apagada.
 pub fn trail_levels(n: u8) -> Vec<f32> {
-    let n = n.clamp(1, 3) as usize;
+    let n = n.min(3) as usize;
     (0..=n).map(|i| 1.0 - i as f32 / (n + 1) as f32).collect()
 }
 
@@ -379,35 +482,41 @@ async fn play_steps(
     let mut color_of: std::collections::HashMap<u8, [u8; 3]> = std::collections::HashMap::new();
     let mut slowest = 0;
 
-    for (i, changes) in frames.iter().enumerate() {
-        let t = Instant::now();
-        for &(k, level) in changes {
-            match level {
-                None => {
-                    model.clear_key(device, k, false).await?;
-                    color_of.remove(&k);
-                }
-                Some(0) => {
-                    let c = if anim.random_colors {
-                        random_color(&mut rng)
-                    } else {
-                        sample(&colors, i as f32 / steps.len().max(1) as f32)
-                    };
-                    color_of.insert(k, c);
-                    model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
-                }
-                Some(t) => {
-                    let c = scale(*color_of.get(&k).unwrap_or(&[255, 255, 255]), levels[t]);
-                    model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
+    let max_send = model.max_changes_per_send();
+    for (i, frame) in frames.iter().enumerate() {
+        // Si un paso cambia más teclas de las que aguanta el deck, se reparte en varios envíos
+        let chunks: Vec<&[(u8, Level)]> = frame.chunks(max_send.max(1)).collect();
+        let share = even / chunks.len() as u32;
+        for changes in chunks {
+            let t = Instant::now();
+            for &(k, level) in changes {
+                match level {
+                    None => {
+                        model.clear_key(device, k, false).await?;
+                        color_of.remove(&k);
+                    }
+                    Some(0) => {
+                        let c = if anim.random_colors {
+                            random_color(&mut rng)
+                        } else {
+                            sample(&colors, i as f32 / steps.len().max(1) as f32)
+                        };
+                        color_of.insert(k, c);
+                        model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
+                    }
+                    Some(t) => {
+                        let c = scale(*color_of.get(&k).unwrap_or(&[255, 255, 255]), levels[t]);
+                        model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
+                    }
                 }
             }
-        }
-        device.flush().await?;
+            device.flush().await?;
 
-        let wait = even.max(Duration::from_millis(base + per_key * changes.len() as u64));
-        slowest = slowest.max(wait.as_millis());
-        if let Some(rest) = wait.checked_sub(t.elapsed()) {
-            tokio::time::sleep(rest).await;
+            let wait = share.max(Duration::from_millis(base + per_key * changes.len() as u64));
+            slowest = slowest.max(wait.as_millis());
+            if let Some(rest) = wait.checked_sub(t.elapsed()) {
+                tokio::time::sleep(rest).await;
+            }
         }
     }
     log::info!("Animación {:?}: {n} pasos ({}), hasta {slowest} ms por paso", anim.kind, if anim.fixed { format!("fija, apagado {:?}", anim.fixed_off) } else { format!("estela de {}", levels.len() - 1) });
@@ -560,6 +669,19 @@ mod tests {
         assert_eq!(trail_levels(3), vec![1.0, 0.75, 0.5, 0.25]);
         assert_eq!(trail_levels(1), vec![1.0, 0.5]);
         assert_eq!(trail_levels(10).len(), 4);
+        assert_eq!(trail_levels(0), vec![1.0]);
+        // Las 6 animaciones ligeras: sin estela, como mucho 4 teclas cambian por paso
+        for steps in [snake_steps(&one), spiral_steps(&one), bounce_steps(&one), meet_steps(&one), rain_steps(&one), windmill_steps(&one)] {
+            let worst = trail_frames(&steps, 1).iter().map(|f| f.len()).max().unwrap();
+            assert!(worst <= 4, "{worst} cambios en {steps:?}");
+        }
+        assert_eq!(spiral_order(3, 6), vec![0, 1, 2, 3, 4, 5, 11, 17, 16, 15, 14, 13, 12, 6, 7, 8, 9, 10]);
+        assert_eq!(snake_steps(&one)[6], vec![11]);
+        assert_eq!(meet_steps(&one)[0], vec![0, 17]);
+        let pro = Model::from_vid_pid(0x0b00, 0x1003).unwrap();
+        for steps in [snake_steps(&pro), spiral_steps(&pro), bounce_steps(&pro), meet_steps(&pro), rain_steps(&pro), windmill_steps(&pro)] {
+            assert!(steps.iter().flatten().all(|&k| k < 10));
+        }
         // Fijo: se encienden y se quedan; al final, de golpe o con el mismo recorrido
         let fx = fixed_frames(&a, None);
         assert_eq!(fx.len(), a.len() + 1);
@@ -594,5 +716,21 @@ mod tests {
         assert_eq!(sample(&c, 0.5), [200, 100, 0]);
         assert_eq!(sample(&c, 1.0), [0, 0, 0]);
         assert_eq!(sample(&[[9, 9, 9]], 0.7), [9, 9, 9]);
+    }
+}
+
+#[cfg(test)]
+#[test]
+#[ignore]
+fn volcar_pasos() {
+    let one = Model::from_vid_pid(0x0b00, 0x1000).unwrap();
+    let all = [
+        ("Lineal", chase_steps(&one)), ("Flecha", arrow_steps(&one)), ("Filas", row_steps(&one)),
+        ("Aleatorio", random_steps(&one)), ("Serpiente", snake_steps(&one)), ("Espiral", spiral_steps(&one)),
+        ("Rebote", bounce_steps(&one)), ("Encuentro", meet_steps(&one)), ("Lluvia", rain_steps(&one)),
+        ("Molino", windmill_steps(&one)),
+    ];
+    for (name, steps) in all {
+        println!("{name}|{:?}", steps);
     }
 }

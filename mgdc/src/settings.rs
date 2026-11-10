@@ -74,6 +74,18 @@ pub enum AnimKind {
     Rows,
     /// Teclas al azar, de una en una y sin repetir
     Random,
+    /// Zigzag: una fila a la derecha, la siguiente a la izquierda
+    Snake,
+    /// Espiral desde el borde hacia el centro
+    Spiral,
+    /// Una tecla que rebota en diagonal contra los bordes
+    Bounce,
+    /// Dos teclas que salen de los extremos y se encuentran en el centro
+    Meet,
+    /// Gotas que caen por columnas al azar
+    Rain,
+    /// Dos teclas opuestas que giran por el borde
+    Windmill,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
