@@ -107,6 +107,7 @@ pub async fn play(
     let frames = match anim.kind {
         AnimKind::None => return Ok(()),
         AnimKind::Gif => play_gif(device, model, &cal, id, closing).await?,
+        AnimKind::Chase => play_chase(device, model, &cal, anim).await?,
         AnimKind::Fade => play_fade(device, model, &cal, anim, closing, brightness).await?,
         _ => play_effect(device, model, &cal, anim, closing).await?,
     };
@@ -186,6 +187,41 @@ async fn play_effect(
         pace(model, tick, sent, FRAME).await;
     }
     Ok(frames)
+}
+
+/// Lineal: se enciende la tecla 0; luego la 1 y se apaga la 0; y así hasta la
+/// última. Cada paso cambia solo dos teclas, así que el MSD-ONE lo aguanta.
+async fn play_chase(
+    device: &Device,
+    model: &Model,
+    cal: &Calibration,
+    anim: &Animation,
+) -> Result<usize, MirajazzError> {
+    let (rows, cols) = model.grid();
+    let n = rows as usize * cols as usize;
+    let colors = palette(anim);
+    let (base, per_key) = model.anim_pacing();
+    // El total repartido entre las teclas, pero nunca más rápido de lo que aguanta el deck
+    let min = Duration::from_millis(base + per_key * 2);
+    let step = (Duration::from_millis(anim.duration_ms.clamp(300, 8000) as u64) / n as u32).max(min);
+    log::info!("Animación lineal: {n} teclas, {} ms por tecla", step.as_millis());
+
+    for i in 0..n {
+        let t = Instant::now();
+        let pos = i as u8;
+        let c = sample(&colors, i as f32 / n as f32);
+        model.draw_key(device, pos, model.calibrate(cal, pos, false, solid(c))).await?;
+        if i > 0 {
+            model.clear_key(device, pos - 1, false).await?;
+        }
+        device.flush().await?;
+        if let Some(rest) = step.checked_sub(t.elapsed()) {
+            tokio::time::sleep(rest).await;
+        }
+    }
+    model.clear_key(device, (n - 1) as u8, false).await?;
+    device.flush().await?;
+    Ok(n)
 }
 
 /// Fundido con el brillo de la pantalla: un solo envío de teclas y luego solo

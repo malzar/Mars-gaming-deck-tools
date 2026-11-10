@@ -66,6 +66,8 @@ pub enum AnimKind {
     Gif,
     /// Tus propios iconos aparecen (o se van) tecla a tecla
     Cascade,
+    /// Una sola tecla encendida que recorre el deck de la primera a la última
+    Chase,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

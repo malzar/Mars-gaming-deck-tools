@@ -97,19 +97,19 @@ impl Model {
         !matches!(self, Model::Akp153(k) if k.protocol_version() == 1)
     }
 
-    /// Tipos de animación que admite este deck. El MSD-ONE solo aguanta la
-    /// cascada de iconos (una tecla cada vez, a su ritmo).
+    /// Tipos de animación que admite este deck. El MSD-ONE solo aguanta las
+    /// que cambian una o dos teclas cada vez, a su ritmo (cascada y lineal).
     pub fn anim_kinds(&self) -> &'static [&'static str] {
         if self.supports_animations() {
-            &["none", "cascade", "wave", "keys", "fade", "gif"]
+            &["none", "cascade", "chase", "wave", "keys", "fade", "gif"]
         } else {
-            &["none", "cascade"]
+            &["none", "cascade", "chase"]
         }
     }
 
     pub fn allows_animation(&self, kind: &crate::settings::AnimKind) -> bool {
         use crate::settings::AnimKind;
-        matches!(kind, AnimKind::None | AnimKind::Cascade) || self.supports_animations()
+        matches!(kind, AnimKind::None | AnimKind::Cascade | AnimKind::Chase) || self.supports_animations()
     }
 
     /// Borra una tecla (o un trozo de la pantalla de las ruedas) sin enviarlo todavía
