@@ -68,6 +68,12 @@ pub enum AnimKind {
     Cascade,
     /// Una sola tecla encendida que recorre el deck de la primera a la última
     Chase,
+    /// Flecha que avanza de izquierda a derecha: la fila del centro va delante
+    Arrow,
+    /// Se enciende una fila entera, luego la siguiente y se apaga la anterior
+    Rows,
+    /// Teclas al azar, de una en una y sin repetir
+    Random,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,6 +85,8 @@ pub struct Animation {
     pub palette: String,
     /// Colores "#rrggbb": uno si es "un color", varios si es una paleta
     pub colors: Vec<String>,
+    /// Cada tecla de un color al azar (en vez de los colores de arriba)
+    pub random_colors: bool,
 }
 
 impl Animation {
@@ -91,6 +99,7 @@ impl Animation {
                 "#ff0000".into(), "#ff8a00".into(), "#ffe600".into(), "#00d84a".into(),
                 "#00b3ff".into(), "#5a3dff".into(), "#d400ff".into(),
             ],
+            random_colors: false,
         }
     }
 }

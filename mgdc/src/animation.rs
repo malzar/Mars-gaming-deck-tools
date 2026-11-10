@@ -108,6 +108,9 @@ pub async fn play(
         AnimKind::None => return Ok(()),
         AnimKind::Gif => play_gif(device, model, &cal, id, closing).await?,
         AnimKind::Chase => play_chase(device, model, &cal, anim).await?,
+        AnimKind::Arrow => play_steps(device, model, &cal, anim, arrow_steps(model)).await?,
+        AnimKind::Rows => play_steps(device, model, &cal, anim, row_steps(model)).await?,
+        AnimKind::Random => play_steps(device, model, &cal, anim, random_steps(model)).await?,
         AnimKind::Fade => play_fade(device, model, &cal, anim, closing, brightness).await?,
         _ => play_effect(device, model, &cal, anim, closing).await?,
     };
@@ -205,11 +208,12 @@ async fn play_chase(
     let min = Duration::from_millis(base + per_key * 2);
     let step = (Duration::from_millis(anim.duration_ms.clamp(300, 8000) as u64) / n as u32).max(min);
     log::info!("Animación lineal: {n} teclas, {} ms por tecla", step.as_millis());
+    let mut rng = Rng::new();
 
     for i in 0..n {
         let t = Instant::now();
         let pos = i as u8;
-        let c = sample(&colors, i as f32 / n as f32);
+        let c = if anim.random_colors { random_color(&mut rng) } else { sample(&colors, i as f32 / n as f32) };
         model.draw_key(device, pos, model.calibrate(cal, pos, false, solid(c))).await?;
         if i > 0 {
             model.clear_key(device, pos - 1, false).await?;
@@ -221,6 +225,137 @@ async fn play_chase(
     }
     model.clear_key(device, (n - 1) as u8, false).await?;
     device.flush().await?;
+    Ok(n)
+}
+
+/// Un paso de animación: las teclas (posiciones de OpenDeck) encendidas en ese momento
+type Step = Vec<u8>;
+
+/// Flecha: la fila del centro va delante y las demás se retrasan una columna
+/// por cada fila de distancia. En el MSD-ONE (3×6): 6 → 7,0,12 → 8,1,13 → … → 5,17.
+fn arrow_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    let mid = (rows as i32 - 1) / 2;
+    let max_lag = (0..rows as i32).map(|r| (r - mid).abs()).max().unwrap_or(0);
+    (0..cols as i32 + max_lag)
+        .map(|k| {
+            (0..rows as i32)
+                .filter_map(|r| {
+                    let c = k - (r - mid).abs();
+                    (0..cols as i32).contains(&c).then(|| (r * cols as i32 + c) as u8)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Filas: 0-5, luego 6-11 (y se apaga la anterior), y así hasta la última
+fn row_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    (0..rows).map(|r| (0..cols).map(|c| r * cols + c).collect()).collect()
+}
+
+/// Aleatorio: todas las teclas en orden al azar, de una en una, sin repetir
+fn random_steps(model: &Model) -> Vec<Step> {
+    let (rows, cols) = model.grid();
+    let mut keys: Vec<u8> = (0..rows * cols).collect();
+    let mut rng = Rng::new();
+    for i in (1..keys.len()).rev() {
+        keys.swap(i, rng.below(i + 1));
+    }
+    keys.into_iter().map(|k| vec![k]).collect()
+}
+
+/// Generador pseudoaleatorio sencillo (xorshift), sin dependencias
+struct Rng(u64);
+
+impl Rng {
+    fn new() -> Self {
+        let seed = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0x9E37_79B9_7F4A_7C15);
+        Rng(seed | 1)
+    }
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+    fn below(&mut self, n: usize) -> usize {
+        (self.next() % n as u64) as usize
+    }
+}
+
+/// Color vivo al azar (tono aleatorio, saturación y brillo al máximo)
+fn random_color(rng: &mut Rng) -> [u8; 3] {
+    let h = (rng.next() % 360) as f32 / 60.0;
+    let x = 1.0 - (h % 2.0 - 1.0).abs();
+    let (r, g, b) = match h as u32 {
+        0 => (1.0, x, 0.0),
+        1 => (x, 1.0, 0.0),
+        2 => (0.0, 1.0, x),
+        3 => (0.0, x, 1.0),
+        4 => (x, 0.0, 1.0),
+        _ => (1.0, 0.0, x),
+    };
+    [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8]
+}
+
+/// Reproduce una lista de pasos. En cada paso solo se envían las teclas que
+/// cambian (las que se encienden y las que se apagan), y se espera lo que
+/// necesita el deck según cuántas han cambiado.
+async fn play_steps(
+    device: &Device,
+    model: &Model,
+    cal: &Calibration,
+    anim: &Animation,
+    steps: Vec<Step>,
+) -> Result<usize, MirajazzError> {
+    let colors = palette(anim);
+    let mut rng = Rng::new();
+    let (base, per_key) = model.anim_pacing();
+    let n = steps.len().max(1);
+    let even = Duration::from_millis(anim.duration_ms.clamp(300, 8000) as u64) / n as u32;
+    let mut lit: Step = vec![];
+    let mut slowest = 0;
+
+    for (i, step) in steps.iter().enumerate() {
+        let t = Instant::now();
+        let mut changed = 0u64;
+        for &k in &lit {
+            if !step.contains(&k) {
+                model.clear_key(device, k, false).await?;
+                changed += 1;
+            }
+        }
+        for &k in step {
+            if lit.contains(&k) {
+                continue;
+            }
+            let c = if anim.random_colors {
+                random_color(&mut rng)
+            } else {
+                sample(&colors, i as f32 / n as f32)
+            };
+            model.draw_key(device, k, model.calibrate(cal, k, false, solid(c))).await?;
+            changed += 1;
+        }
+        device.flush().await?;
+        lit = step.clone();
+
+        let wait = even.max(Duration::from_millis(base + per_key * changed));
+        slowest = slowest.max(wait.as_millis());
+        if let Some(rest) = wait.checked_sub(t.elapsed()) {
+            tokio::time::sleep(rest).await;
+        }
+    }
+    for &k in &lit {
+        model.clear_key(device, k, false).await?;
+    }
+    device.flush().await?;
+    log::info!("Animación {:?}: {n} pasos, hasta {slowest} ms por paso", anim.kind);
     Ok(n)
 }
 
@@ -354,6 +489,22 @@ pub async fn clear(device: &Device) -> Result<(), MirajazzError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn flecha_y_filas_en_el_msd_one() {
+        let one = Model::from_vid_pid(0x0b00, 0x1000).unwrap();
+        let a = arrow_steps(&one);
+        assert_eq!(a[0], vec![6]);
+        assert_eq!(a[1], vec![0, 7, 12]);
+        assert_eq!(a[2], vec![1, 8, 13]);
+        assert_eq!(a.last().unwrap(), &vec![5, 17]);
+        assert_eq!(a.len(), 7);
+        let r = row_steps(&one);
+        assert_eq!(r[1], vec![6, 7, 8, 9, 10, 11]);
+        let mut all: Vec<u8> = random_steps(&one).into_iter().flatten().collect();
+        all.sort();
+        assert_eq!(all, (0..18).collect::<Vec<u8>>());
+    }
 
     #[test]
     fn paleta_interpola_y_da_la_vuelta() {

@@ -98,18 +98,22 @@ impl Model {
     }
 
     /// Tipos de animación que admite este deck. El MSD-ONE solo aguanta las
-    /// que cambian una o dos teclas cada vez, a su ritmo (cascada y lineal).
+    /// que cambian pocas teclas cada vez, a su ritmo (cascada, lineal, flecha,
+    /// filas y aleatorio).
     pub fn anim_kinds(&self) -> &'static [&'static str] {
         if self.supports_animations() {
-            &["none", "cascade", "chase", "wave", "keys", "fade", "gif"]
+            &["none", "cascade", "chase", "arrow", "rows", "random", "wave", "keys", "fade", "gif"]
         } else {
-            &["none", "cascade", "chase"]
+            &["none", "cascade", "chase", "arrow", "rows", "random"]
         }
     }
 
     pub fn allows_animation(&self, kind: &crate::settings::AnimKind) -> bool {
         use crate::settings::AnimKind;
-        matches!(kind, AnimKind::None | AnimKind::Cascade | AnimKind::Chase) || self.supports_animations()
+        matches!(
+            kind,
+            AnimKind::None | AnimKind::Cascade | AnimKind::Chase | AnimKind::Arrow | AnimKind::Rows | AnimKind::Random
+        ) || self.supports_animations()
     }
 
     /// Borra una tecla (o un trozo de la pantalla de las ruedas) sin enviarlo todavía
