@@ -501,12 +501,17 @@ fn trail_frames(steps: &[Step], levels: usize) -> Vec<Vec<(u8, Level)>> {
     frames
 }
 
-/// Espejo izquierda-derecha: la columna c pasa a ser la última menos c
+/// Invertir: lo que iba de arriba abajo va de abajo arriba, y lo que iba de
+/// izquierda a derecha va de derecha a izquierda (la animación girada 180°)
 fn mirror(model: &Model, steps: Vec<Step>) -> Vec<Step> {
-    let (_, cols) = model.grid();
+    let (rows, cols) = model.grid();
     steps
         .into_iter()
-        .map(|s| s.into_iter().map(|k| (k / cols) * cols + (cols - 1 - k % cols)).collect())
+        .map(|s| {
+            s.into_iter()
+                .map(|k| (rows - 1 - k / cols) * cols + (cols - 1 - k % cols))
+                .collect()
+        })
         .collect()
 }
 
@@ -553,7 +558,7 @@ async fn play_steps(
     steps: Vec<Step>,
     off_steps: Vec<Step>,
 ) -> Result<usize, MirajazzError> {
-    // Invertir: en espejo, de derecha a izquierda
+    // Invertir: de abajo arriba y de derecha a izquierda
     let (steps, off_steps) = if anim.reverse {
         (mirror(model, steps), mirror(model, off_steps))
     } else {
@@ -612,7 +617,7 @@ async fn play_steps(
             }
         }
     }
-    log::info!("Animación {:?}: {n} pasos ({}), hasta {slowest} ms por paso", anim.kind, if anim.fixed { format!("fija, apagado {:?}", anim.fixed_off) } else { format!("estela de {}", levels.len() - 1) });
+    log::info!("Animación {:?}: {n} pasos ({}), hasta {slowest} ms por paso", anim.kind, if anim.fixed { format!("fija, al apagar {}", if anim.fixed_off == crate::settings::FixedOff::Same { "igual que al encender" } else { "de golpe" }) } else { format!("estela de {}", levels.len() - 1) });
     Ok(n)
 }
 
@@ -785,11 +790,19 @@ mod tests {
         assert_eq!(cross_steps(&one)[1], vec![7]);
         assert_eq!(cross_steps(&one)[6], vec![17, 5]);
         assert_eq!(swing_steps(&one)[0], vec![0, 12]);
-        // Invertir: la flecha va hacia la izquierda (empieza en el 11, luego 10, 5 y 17)
+        // Invertir: la flecha va hacia la izquierda (empieza en el 11, luego 17, 10 y 5)
         let inv = mirror(&one, arrow_steps(&one));
         assert_eq!(inv[0], vec![11]);
-        assert_eq!(inv[1], vec![5, 10, 17]);
-        assert_eq!(inv.last().unwrap(), &vec![0, 12]);
+        assert_eq!(inv[1], vec![17, 10, 5]);
+        assert_eq!(inv.last().unwrap(), &vec![12, 0]);
+        // La lineal invertida va del 17 al 0
+        let lin = mirror(&one, chase_steps(&one));
+        assert_eq!(lin[0], vec![17]);
+        assert_eq!(lin.last().unwrap(), &vec![0]);
+        // Lo que manda el panel para "Fijo, igual que al encender" se lee bien
+        let parsed: crate::settings::Animation =
+            serde_json::from_str(r#"{"kind":"arrow","fixed":true,"fixed_off":"same","reverse":true}"#).unwrap();
+        assert!(parsed.fixed && parsed.fixed_off == crate::settings::FixedOff::Same && parsed.reverse);
         assert_eq!(swing_steps(&one)[6], vec![11, 10]);
         let pro = Model::from_vid_pid(0x0b00, 0x1003).unwrap();
         for steps in [snake_steps(&pro), bounce_steps(&pro), meet_steps(&pro), rain_steps(&pro), windmill_steps(&pro), cross_steps(&pro), swing_steps(&pro)] {

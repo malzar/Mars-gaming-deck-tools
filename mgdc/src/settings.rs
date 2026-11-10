@@ -109,7 +109,7 @@ pub struct Animation {
     pub fixed: bool,
     /// En modo fijo, cómo se apagan al final
     pub fixed_off: FixedOff,
-    /// Invertir: la animación va de derecha a izquierda (en espejo)
+    /// Invertir: de abajo arriba y de derecha a izquierda (girada 180°)
     pub reverse: bool,
 }
 
