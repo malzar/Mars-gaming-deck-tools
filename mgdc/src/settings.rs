@@ -185,6 +185,9 @@ pub struct DeviceSettings {
     pub sleep_minutes: u32,
     /// La pulsación que despierta la pantalla solo la enciende (no ejecuta la acción)
     pub swallow_wake_press: bool,
+    /// Pantalla táctil: tiempo (ms) entre tocar la zona de una rueda y deslizar
+    /// para que cuente como deslizar en esa rueda
+    pub swipe_window_ms: u32,
     pub schedule: Schedule,
     pub animations: Animations,
     /// Corrección de posición y tamaño de los iconos
@@ -224,6 +227,7 @@ impl Default for DeviceSettings {
             never_sleep: true,
             sleep_minutes: 15,
             swallow_wake_press: true,
+            swipe_window_ms: crate::gestures::WINDOW_MS,
             schedule: Schedule::default(),
             animations: Animations::default(),
             calibration: Calibration::default(),

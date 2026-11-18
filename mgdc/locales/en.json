@@ -303,7 +303,18 @@
     "t_snd_boing": "Boing",
     "t_snd_system": "Windows sound",
     "t_snd_own": "Your sound",
-    "t_snd_pick": "Choose a WAV…"
+    "t_snd_pick": "Choose a WAV…",
+    "sw_title": "Touch screen (MSD-PRO)",
+    "sw_mode": "Swipe",
+    "sw_off": "Does nothing",
+    "sw_same": "Same as turning",
+    "sw_other": "Something else",
+    "sw_action": "On swipe ← / →",
+    "sw_track": "Previous / next track",
+    "sw_volume": "Lower / raise system volume",
+    "sw_invert": "Reverse direction",
+    "sw_note_off": "Tapping this dial’s zone responds right away.",
+    "sw_note_on": "Tap this dial’s zone, release and swipe at a normal speed. If the gesture isn’t detected well, adjust the swipe time in the Prisma panel (Screen tab)."
   },
   "panel": {
     "screen": "Screen",
@@ -507,7 +518,8 @@
     "prfDeleteTip": "Delete this profile",
     "prfDeleteAsk": "Delete the profile “{name}”?",
     "prfDeleting": "Deleting the profile… (the deck reconnects for a moment in OpenDeck)",
-    "prfDeleted": "Profile deleted"
+    "prfDeleted": "Profile deleted",
+    "swipeWindow": "Time to swipe after a tap (touch screen)"
   },
   "opendeck": {
     "Name": "Prisma",

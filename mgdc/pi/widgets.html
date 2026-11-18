@@ -48,6 +48,7 @@
     <p class="note"><a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>). <span data-i18n="credito_fuentes">Calidad del aire y polen: Copernicus (CAMS). Localidades: GeoNames.</span></p>
   </div>
 <script src="i18n.js"></script>
+<script src="swipe.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   let ws = null, uuid = '', action = '', settings = {}, dial = false, kind = '';
@@ -122,6 +123,7 @@
     dial = (ai.payload && ai.payload.controller) === 'Encoder';
     settings = Object.assign({}, ai.payload && ai.payload.settings);
     show();
+    PrismaSwipe.mount(ai, () => settings, save);
     ws = new WebSocket('ws://127.0.0.1:' + port);
     ws.onopen = () => { ws.send(JSON.stringify({ event: registerEvent, uuid })); };
     ws.onmessage = (m) => {
@@ -129,6 +131,7 @@
       if (msg.event === 'didReceiveSettings' && msg.payload) { settings = Object.assign({}, msg.payload.settings); show(); }
       if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.places) places(msg.payload.places, msg.payload.q);
       if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.placesError) $('cityNote').textContent = msg.payload.placesError;
+      if (msg.event === 'didReceiveSettings') PrismaSwipe.refresh();
     };
   };
 </script>

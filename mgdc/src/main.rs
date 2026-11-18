@@ -59,6 +59,7 @@ mod schedule;
 mod settings;
 mod sounds;
 mod svg;
+mod touch;
 mod timers;
 mod watcher;
 mod weather;

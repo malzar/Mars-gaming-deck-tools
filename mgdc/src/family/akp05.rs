@@ -322,7 +322,7 @@ fn read_encoder_press(input: u8, _state: u8) -> Result<DeviceInput, MirajazzErro
     // Deslizar por la pantalla: como girar una rueda de más (ver gestures.rs)
     if input == 0x38 || input == 0x39 {
         let mut twist = vec![0i8; crate::gestures::STRIP as usize + 1];
-        twist[crate::gestures::STRIP as usize] = if input == 0x38 { -1 } else { 1 };
+        twist[crate::gestures::STRIP as usize] = if input == 0x38 { 1 } else { -1 };
         return Ok(DeviceInput::EncoderTwist(twist));
     }
     let encoder: usize = match input {

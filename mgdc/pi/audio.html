@@ -87,6 +87,7 @@
   <p class="note" id="note"></p>
 
 <script src="i18n.js"></script>
+<script src="swipe.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   let ws = null, uuid = '', action = '', settings = {}, apps = [], small = false;
@@ -202,6 +203,7 @@
     action = ai.action;
     settings = Object.assign({ target: 'general', step: 2, show_title: true, bar: 'color', bar_color: '#2ecc71', eq_mode: 'level', gif: '', dial_style: 'bar' }, ai.payload && ai.payload.settings);
     renderTargets(); update();
+    PrismaSwipe.mount(ai, () => settings, save);
     ws = new WebSocket('ws://127.0.0.1:' + port);
     ws.onopen = () => {
       ws.send(JSON.stringify({ event: registerEvent, uuid }));
@@ -218,6 +220,7 @@
       if (msg.event === 'didReceiveSettings' && msg.payload) {
         settings = Object.assign(settings, msg.payload.settings); renderTargets(); update();
       }
+      if (msg.event === 'didReceiveSettings') PrismaSwipe.refresh();
     };
   };
 </script>

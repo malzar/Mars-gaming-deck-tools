@@ -35,6 +35,7 @@
   <p class="note" data-i18n="el_icono_de_cada">El icono de cada perfil y el color del marco del activo se ponen en el panel de Prisma, pestaña «Perfiles».</p>
   <p class="note" data-i18n="la_rueda_recorre_en">La rueda recorre, en su orden, los «Switch Profile» de la fila de teclas virtuales que sale en el editor debajo de las ruedas. Prisma añade los que falten al arrancar OpenDeck y al crear un perfil desde el panel.</p>
 <script src="i18n.js"></script>
+<script src="swipe.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   let ws = null, uuid = '', action = '', settings = {};
@@ -61,11 +62,13 @@
     action = ai.action;
     settings = Object.assign({ mode: 'press' }, ai.payload && ai.payload.settings);
     $('mode').value = settings.mode; note(); show();
+    PrismaSwipe.mount(ai, () => settings, save);
     ws = new WebSocket('ws://127.0.0.1:' + port);
     ws.onopen = () => { ws.send(JSON.stringify({ event: registerEvent, uuid })); };
     ws.onmessage = (m) => {
       const msg = JSON.parse(m.data);
       if (msg.event === 'didReceiveSettings' && msg.payload) { settings = Object.assign(settings, msg.payload.settings); $('mode').value = settings.mode || 'press'; note(); show(); }
+      if (msg.event === 'didReceiveSettings') PrismaSwipe.refresh();
     };
   };
 </script>

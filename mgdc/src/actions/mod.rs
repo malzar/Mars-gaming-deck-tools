@@ -73,6 +73,9 @@ pub struct Handler;
 impl openaction::ActionEventHandler for Handler {
     async fn will_appear(&self, event: AppearEvent, outbound: &mut OutboundEventManager) -> EventHandlerResult {
         if let Some(g) = group_of(&event.action) {
+            if event.payload.controller == "Encoder" {
+                crate::gestures::appear(&event.context, &event.device, event.payload.coordinates.column, &event.payload.settings);
+            }
             g.appear(&event, outbound).await;
         }
         Ok(())
@@ -80,6 +83,7 @@ impl openaction::ActionEventHandler for Handler {
 
     async fn will_disappear(&self, event: AppearEvent, _outbound: &mut OutboundEventManager) -> EventHandlerResult {
         if let Some(g) = group_of(&event.action) {
+            crate::gestures::disappear(&event.context);
             g.disappear(&event).await;
         }
         Ok(())
@@ -87,6 +91,8 @@ impl openaction::ActionEventHandler for Handler {
 
     async fn did_receive_settings(&self, event: DidReceiveSettingsEvent, _outbound: &mut OutboundEventManager) -> EventHandlerResult {
         if let Some(g) = group_of(&event.action) {
+            let p = &event.payload;
+            crate::gestures::settings_changed(&event.context, &event.device, p.coordinates.column, &p.settings);
             g.settings(&event).await;
         }
         Ok(())

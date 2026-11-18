@@ -3,6 +3,7 @@ function fill() {
   const s = draft, sc = s.schedule;
   $('brightness').value = s.brightness; $('brightnessV').textContent = s.brightness + ' %';
   $('neverSleep').checked = s.never_sleep; $('sleepMinutes').value = s.sleep_minutes; $('swallow').checked = s.swallow_wake_press;
+  $('swipeWindow').value = s.swipe_window_ms;
   $('schedEnabled').checked = sc.enabled;
   $('city').value = sc.city; $('lat').value = sc.lat; $('lon').value = sc.lon; $('offset').value = sc.offset_minutes;
   $('dayStart').value = sc.day_start; $('nightStart').value = sc.night_start;
@@ -28,6 +29,7 @@ function update() {
   $('sleepMinutes').disabled = s.never_sleep; $('sleepLbl').className = s.never_sleep ? 'off' : '';
   $('schedBody').classList.toggle('hidden', !sc.enabled); $('schedOff').classList.toggle('hidden', sc.enabled);
   $('briNote').classList.toggle('hidden', !sc.enabled);
+  document.querySelectorAll('.swipeRow').forEach((e) => e.classList.toggle('hidden', !(current && (current.cal_zones || []).some((z) => z[0] === 'strip'))));
   document.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === sc.mode));
   $('sunBox').classList.toggle('hidden', sc.mode !== 'sun'); $('fixBox').classList.toggle('hidden', sc.mode !== 'fixed');
   $('dayBriV').textContent = sc.day_brightness + ' %'; $('nightBriV').textContent = sc.night_brightness + ' %';
@@ -83,6 +85,7 @@ $('brightness').oninput = (e) => {
 $('neverSleep').onchange = (e) => { draft.never_sleep = e.target.checked; update(); };
 $('sleepMinutes').onchange = (e) => { draft.sleep_minutes = Math.max(1, +e.target.value || 15); };
 $('swallow').onchange = (e) => { draft.swallow_wake_press = e.target.checked; };
+$('swipeWindow').onchange = (e) => { draft.swipe_window_ms = Math.min(1500, Math.max(500, Math.round((+e.target.value || 1000) / 100) * 100)); e.target.value = draft.swipe_window_ms; };
 $('schedEnabled').onchange = (e) => { draft.schedule.enabled = e.target.checked; update(); };
 document.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { draft.schedule.mode = b.dataset.mode; update(); });
 // Buscar la localidad (cualquier pueblo o ciudad): Prisma pregunta a Open-Meteo

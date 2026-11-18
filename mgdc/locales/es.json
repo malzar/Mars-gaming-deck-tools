@@ -303,7 +303,18 @@
     "t_snd_boing": "Boing",
     "t_snd_system": "Sonido de Windows",
     "t_snd_own": "Tu sonido",
-    "t_snd_pick": "Elegir un WAV…"
+    "t_snd_pick": "Elegir un WAV…",
+    "sw_title": "Pantalla táctil (MSD-PRO)",
+    "sw_mode": "Deslizar",
+    "sw_off": "No hace nada",
+    "sw_same": "Igual que girar",
+    "sw_other": "Otra cosa",
+    "sw_action": "Al deslizar ← / →",
+    "sw_track": "Pista anterior / siguiente",
+    "sw_volume": "Bajar / subir volumen general",
+    "sw_invert": "Invertir dirección",
+    "sw_note_off": "Tocar la zona de esta rueda responde al momento.",
+    "sw_note_on": "Toca la zona de esta rueda, suelta y desliza a velocidad normal. Si no detecta bien el gesto, ajusta el tiempo para deslizar en el panel de Prisma (pestaña Pantalla)."
   },
   "panel": {
     "screen": "Pantalla",
@@ -507,7 +518,8 @@
     "prfDeleteTip": "Borrar este perfil",
     "prfDeleteAsk": "¿Borrar el perfil «{name}»?",
     "prfDeleting": "Borrando el perfil… (el deck se reconecta un momento en OpenDeck)",
-    "prfDeleted": "Perfil borrado"
+    "prfDeleted": "Perfil borrado",
+    "swipeWindow": "Tiempo para deslizar tras tocar (pantalla táctil)"
   },
   "opendeck": {
     "Name": "Prisma",

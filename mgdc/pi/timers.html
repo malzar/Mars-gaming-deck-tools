@@ -45,6 +45,7 @@
   <p class="note" id="note"></p>
   <p class="note" data-i18n="t_end_note">Al acabar, la tecla parpadea; pulsarla lo para. Sigue contando aunque cambies de perfil.</p>
 <script src="i18n.js"></script>
+<script src="swipe.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   let ws = null, uuid = '', action = '', settings = {}, dial = false, kind = '';
@@ -114,6 +115,7 @@
     dial = (ai.payload && ai.payload.controller) === 'Encoder';
     settings = Object.assign({}, ai.payload && ai.payload.settings);
     show();
+    PrismaSwipe.mount(ai, () => settings, save);
     ws = new WebSocket('ws://127.0.0.1:' + port);
     ws.onopen = () => { ws.send(JSON.stringify({ event: registerEvent, uuid })); };
     ws.onmessage = (m) => {
@@ -123,6 +125,7 @@
         settings.sound_id = msg.payload.sound; save(); show(); $('soundNote').classList.add('hidden'); send({ request: 'play', sound: settings.sound_id });
       }
       if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.soundError) { $('soundNote').textContent = msg.payload.soundError; $('soundNote').classList.remove('hidden'); }
+      if (msg.event === 'didReceiveSettings') PrismaSwipe.refresh();
     };
   };
 </script>

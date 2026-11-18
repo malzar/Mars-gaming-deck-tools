@@ -241,7 +241,8 @@ mod tests {
         let mut used = BTreeSet::new();
         for entry in std::fs::read_dir(root.join("pi")).unwrap() {
             let p = entry.unwrap().path();
-            if p.extension().is_none_or(|e| e != "html") {
+            // Las ventanas y sus trozos compartidos (swipe.js…)
+            if p.extension().is_none_or(|e| e != "html" && e != "js") || p.ends_with("i18n.js") {
                 continue;
             }
             let s = std::fs::read_to_string(&p).unwrap();

@@ -318,6 +318,9 @@ async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzE
             }
         };
 
+        // Toques de la pantalla que esperan por si llega un deslizamiento: su
+        // «soltar» tampoco se manda ahora
+        let mut held: Vec<u8> = vec![];
         for update in updates {
             log::debug!("New update: {:#?}", update);
 
@@ -343,15 +346,19 @@ async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzE
                     DeviceStateUpdate::ButtonDown(key) => outbound.key_down(id, key).await.unwrap(),
                     DeviceStateUpdate::ButtonUp(key) => outbound.key_up(id, key).await.unwrap(),
                     DeviceStateUpdate::EncoderDown(encoder) => {
-                        outbound.encoder_down(id, encoder).await.unwrap();
+                        if crate::touch::hold_tap(&id, encoder).await {
+                            held.push(encoder);
+                        } else {
+                            outbound.encoder_down(id, encoder).await.unwrap();
+                        }
                     }
+                    DeviceStateUpdate::EncoderUp(encoder) if held.contains(&encoder) => {}
                     DeviceStateUpdate::EncoderUp(encoder) => {
                         outbound.encoder_up(id, encoder).await.unwrap();
                     }
-                    // Deslizar por la pantalla: para la rueda de perfiles
+                    // Deslizar por la pantalla (ver gestures.rs)
                     DeviceStateUpdate::EncoderTwist(encoder, val) if encoder == crate::gestures::STRIP => {
-                        let id = id.clone();
-                        tokio::spawn(async move { crate::profiles::swipe(&id, val as i16).await });
+                        crate::touch::swipe(outbound, &id, val).await;
                     }
                     DeviceStateUpdate::EncoderTwist(encoder, val) => {
                         outbound
