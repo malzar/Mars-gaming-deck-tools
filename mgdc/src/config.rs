@@ -39,13 +39,12 @@ fn read_toml<T: for<'de> Deserialize<'de>>(path: PathBuf) -> Option<T> {
     }
 }
 
-/// Busca primero en la carpeta de MGDC y, si no existe el archivo, en la del
+/// Busca primero en la carpeta de Prisma y, si no existe el archivo, en la del
 /// plugin original de ambiso (opendeck-akp05) para no perder la configuración.
 fn config_path(name: &str) -> Option<PathBuf> {
-    let base = dirs::config_dir()?;
-    let mgdc = base.join("mgdc").join(name);
-    if mgdc.exists() {
-        return Some(mgdc);
+    let own = crate::app_dir()?.join(name);
+    if own.exists() {
+        return Some(own);
     }
-    Some(base.join("opendeck-akp05").join(name))
+    Some(dirs::config_dir()?.join("opendeck-akp05").join(name))
 }

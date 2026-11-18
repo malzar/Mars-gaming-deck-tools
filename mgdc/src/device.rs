@@ -23,12 +23,16 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     let device: Result<Device, MirajazzError> = async {
         let device = connect(&candidate).await?;
 
-        // Brillo según los ajustes de MGDC (horario de día/noche incluido)
+        // Brillo según los ajustes de Prisma (horario de día/noche incluido)
         device
             .set_brightness(power::initial_brightness(&candidate.id).await)
             .await?;
+        // Al arrancar, todo en negro: no se ve el fondo del deck hasta que
+        // OpenDeck pinta los iconos (las vacías se borran luego, ver end_dark)
         device.clear_all_button_images().await?;
-        device.flush().await?;
+        let cal = settings::for_device(&candidate.id).await.calibration;
+        animation::blackout(&device, &candidate.model, &cal).await?;
+        animation::start_dark(&candidate.id);
 
         // Ajustes de LED y vibración de la familia N4 (config.toml de ambiso)
         if let Model::Akp05(kind) = &candidate.model {
@@ -59,7 +63,9 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     let device = match device {
         Ok(device) => device,
         Err(err) => {
-            handle_error(&candidate.id, err).await;
+            log::error!("Device {} error: {}", candidate.id, err);
+            // Si el deck seguía arrancando tras un fallo, se reintenta
+            tokio::spawn(crate::watcher::reconnect(candidate.id.clone()));
             log::error!(
                 "Had error during device init, finishing device task: {:?}",
                 candidate
@@ -68,11 +74,13 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
         }
     };
 
-    let layout = candidate.model.layout();
 
     // Animación de arranque, antes de que OpenDeck pinte las teclas
-    let startup = settings::for_device(&candidate.id).await.animations.startup;
-    if startup.kind == settings::AnimKind::Cascade {
+    let mut startup = settings::for_device(&candidate.id).await.animations.startup;
+    if crate::watcher::take_reconnected(&candidate.id) {
+        startup.kind = settings::AnimKind::None;
+    }
+    if startup.kind == settings::AnimKind::Cascade && candidate.model.allows_animation(&startup.kind) {
         // Las imágenes que mande OpenDeck al registrar el deck saldrán en cascada
         tokio::spawn(reveal::appear(
             candidate.id.clone(),
@@ -87,27 +95,33 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
         {
             log::warn!("Animación de arranque: {e}");
         }
-        animation::clear(&device).await.ok();
+        // Se queda en negro hasta que OpenDeck pinte los iconos
+        let cal = settings::for_device(&candidate.id).await.calibration;
+        animation::blackout(&device, &candidate.model, &cal).await.ok();
         device.set_brightness(level).await.ok();
         // Margen para que el deck termine antes de que OpenDeck mande las teclas
         tokio::time::sleep(Duration::from_millis(200)).await;
     }
 
+    // Rueda de perfiles: añadir los "Switch Profile" que falten antes de que
+    // OpenDeck lea los perfiles (lo hace al registrar el deck)
+    crate::profiles::prepare(&candidate.id, &candidate.model).await;
+
     log::info!("Registering device {}", candidate.id);
-    if let Some(outbound) = OUTBOUND_EVENT_MANAGER.lock().await.as_mut() {
-        outbound
-            .register_device(
-                candidate.id.clone(),
-                candidate.model.human_name(),
-                layout.rows,
-                layout.cols,
-                layout.encoders as u8,
-                layout.device_type,
-            )
-            .await
-            .unwrap();
+    register_in_opendeck(&candidate.id, &candidate.model).await;
+    {
+        // Cuando OpenDeck ha terminado de pintar, las teclas vacías dejan ver el fondo
+        let id = candidate.id.clone();
+        let wait = if startup.kind == settings::AnimKind::Cascade { 4500 + startup.duration_ms as u64 } else { 2500 };
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(wait)).await;
+            animation::end_dark(&id).await;
+        });
     }
 
+    crate::links::remember_deck(&candidate.id, &candidate.model.human_name());
+    // Fondo de Prisma si el deck todavía no tiene uno
+    tokio::spawn(crate::background::ensure_default(candidate.id.clone()));
     DEVICE_INFO.write().await.insert(
         candidate.id.clone(),
         DeviceInfo {
@@ -166,26 +180,25 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     if let Some(device) = DEVICES.read().await.get(&candidate.id) {
         // Cierre ordenado (se cierra OpenDeck): animación de cierre
         let anims = settings::for_device(&candidate.id).await.animations;
-        if token.is_cancelled() && anims.shutdown.kind == settings::AnimKind::Cascade {
+        if token.is_cancelled()
+            && anims.shutdown.kind == settings::AnimKind::Cascade
+            && candidate.model.allows_animation(&anims.shutdown.kind)
+        {
             let level = power::screen_level(&candidate.id).await;
             if let Err(e) = reveal::disappear(device, &candidate.model, anims.shutdown.duration_ms).await {
                 log::warn!("Animación de cierre: {e}");
             }
-            // El MSD-ONE siempre se queda con la imagen de fondo
-            let bg = anims.end_with_background || !candidate.model.supports_animations();
-            animation::finish_closing(device, bg, level).await.ok();
-        } else if token.is_cancelled() && !candidate.model.supports_animations() {
-            // Sin animación: teclas en negro y se queda la imagen de fondo
-            let level = power::screen_level(&candidate.id).await;
-            animation::finish_closing(device, true, level).await.ok();
+            let ending = animation::Ending::from_settings(&anims, &candidate.model);
+            animation::finish_closing(device, &candidate.model, &candidate.id, ending, level).await.ok();
         } else if token.is_cancelled() {
             let level = power::screen_level(&candidate.id).await;
-            if let Err(e) =
-                animation::play(device, &candidate.model, &candidate.id, &anims.shutdown, true, level).await
+            if candidate.model.allows_animation(&anims.shutdown.kind)
+                && let Err(e) = animation::play(device, &candidate.model, &candidate.id, &anims.shutdown, true, level).await
             {
                 log::warn!("Animación de cierre: {e}");
             }
-            animation::finish_closing(device, anims.end_with_background, level).await.ok();
+            let ending = animation::Ending::from_settings(&anims, &candidate.model);
+            animation::finish_closing(device, &candidate.model, &candidate.id, ending, level).await.ok();
         } else {
             device.shutdown().await.ok();
         }
@@ -203,6 +216,16 @@ pub async fn handle_error(id: &String, err: MirajazzError) -> bool {
         return true;
     }
 
+    // Ya lo ha gestionado otra tarea del mismo deck
+    if !DEVICES.read().await.contains_key(id) {
+        return false;
+    }
+
+    // Primero se quita de la lista: así, al cancelar sus tareas, no se toma
+    // por un cierre de OpenDeck (no hace la animación de cierre ni apaga el deck)
+    log::info!("Removing device {} from the list", id);
+    DEVICES.write().await.remove(id);
+
     log::info!("Deregistering device {}", id);
     if let Some(outbound) = OUTBOUND_EVENT_MANAGER.lock().await.as_mut() {
         outbound.deregister_device(id.clone()).await.ok();
@@ -213,8 +236,9 @@ pub async fn handle_error(id: &String, err: MirajazzError) -> bool {
         token.cancel();
     }
 
-    log::info!("Removing device {} from the list", id);
-    DEVICES.write().await.remove(id);
+    // Un fallo puntual de USB no deja el deck desconectado: si sigue
+    // enchufado, se vuelve a conectar solo
+    tokio::spawn(crate::watcher::reconnect(id.clone()));
 
     false
 }
@@ -324,6 +348,11 @@ async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzE
                     DeviceStateUpdate::EncoderUp(encoder) => {
                         outbound.encoder_up(id, encoder).await.unwrap();
                     }
+                    // Deslizar por la pantalla: para la rueda de perfiles
+                    DeviceStateUpdate::EncoderTwist(encoder, val) if encoder == crate::gestures::STRIP => {
+                        let id = id.clone();
+                        tokio::spawn(async move { crate::profiles::swipe(&id, val as i16).await });
+                    }
                     DeviceStateUpdate::EncoderTwist(encoder, val) => {
                         outbound
                             .encoder_change(id, encoder, val as i16)
@@ -360,4 +389,52 @@ async fn keepalive_task(candidate: &CandidateDevice) -> Result<(), MirajazzError
     }
 
     Ok(())
+}
+
+/// Avisa a OpenDeck de que el deck está conectado (entonces lee sus perfiles)
+pub async fn register_in_opendeck(id: &str, model: &Model) {
+    let layout = model.layout();
+    if let Some(outbound) = OUTBOUND_EVENT_MANAGER.lock().await.as_mut() {
+        outbound
+            .register_device(
+                id.to_string(),
+                model.human_name(),
+                layout.rows,
+                layout.cols,
+                layout.encoders as u8,
+                // Teclas virtuales de los perfiles: OpenDeck las pinta en una
+                // fila debajo de las ruedas ("touchpoints"), justo después de
+                // las de verdad. Solo las que hagan falta (una por perfil).
+                crate::profiles::virtual_count(id),
+                layout.device_type,
+            )
+            .await
+            .unwrap();
+    }
+}
+
+/// Hace que OpenDeck vuelva a leer los perfiles de un deck sin reiniciarlo:
+/// le dice que se ha desconectado (guarda lo pendiente y los olvida), deja que
+/// `between` toque los ficheros y lo vuelve a conectar (los relee).
+pub async fn reload_profiles<F, T>(id: &str, between: F) -> Option<T>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    let model = {
+        let devices = DEVICES.read().await;
+        let d = devices.get(id)?;
+        Model::from_vid_pid(d.vid, d.pid)?
+    };
+    log::info!("Perfiles: OpenDeck vuelve a leer los perfiles de {id}");
+    if let Some(outbound) = OUTBOUND_EVENT_MANAGER.lock().await.as_mut() {
+        outbound.deregister_device(id.to_string()).await.ok();
+    }
+    // OpenDeck guarda los perfiles al desconectar: margen para que termine
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    let r = tokio::task::spawn_blocking(between).await.ok();
+    crate::profiles::prepare(id, &model).await;
+    crate::profiles::forget_images(id).await;
+    register_in_opendeck(id, &model).await;
+    r
 }

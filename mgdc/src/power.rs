@@ -46,10 +46,10 @@ pub static RUNTIME: LazyLock<Mutex<HashMap<String, Runtime>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 async fn set_device_brightness(id: &str, value: u8) {
-    if let Some(device) = DEVICES.read().await.get(id) {
-        if let Err(e) = device.set_brightness(value.min(100)).await {
-            log::warn!("No se pudo poner el brillo de {id}: {e}");
-        }
+    if let Some(device) = DEVICES.read().await.get(id)
+        && let Err(e) = device.set_brightness(value.min(100)).await
+    {
+        log::warn!("No se pudo poner el brillo de {id}: {e}");
     }
 }
 

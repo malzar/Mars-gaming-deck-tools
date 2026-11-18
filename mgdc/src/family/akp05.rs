@@ -319,14 +319,24 @@ fn read_encoder_value(input: u8) -> Result<DeviceInput, MirajazzError> {
 fn read_encoder_press(input: u8, _state: u8) -> Result<DeviceInput, MirajazzError> {
     let mut encoder_states = vec![false; ENCODER_COUNT];
 
+    // Deslizar por la pantalla: como girar una rueda de más (ver gestures.rs)
+    if input == 0x38 || input == 0x39 {
+        let mut twist = vec![0i8; crate::gestures::STRIP as usize + 1];
+        twist[crate::gestures::STRIP as usize] = if input == 0x38 { -1 } else { 1 };
+        return Ok(DeviceInput::EncoderTwist(twist));
+    }
     let encoder: usize = match input {
-        0x37 | 0x00 | 0x40 => 0, // Left most
-        0x35 | 0x41 => 1,
-        0x33 | 0x42 => 2,
-        0x36 | 0x43 => 3, // Right most
-        // Ignore swipe for now because they are unreliabe/detected incorrectly
-        // 0x38 => 4,
-        // 0x39 => 5,
+        0x37 | 0x00 => 0, // Left most
+        0x35 => 1,
+        0x33 => 2,
+        0x36 => 3, // Right most
+        // Toques de la pantalla encima de cada rueda: cuentan como pulsarla,
+        // pero se apunta que han sido un toque
+        0x40..=0x43 => {
+            let e = (input - 0x40) as usize;
+            crate::gestures::mark_touch(e);
+            e
+        }
         _ => return Err(MirajazzError::BadData),
     };
 

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title data-i18n="t_title">Prisma · Temporizador y Pomodoro</title>
+<style>
+  :root { color-scheme: dark; --bg: #2d2d2d; --field: #3d3d3d; --border: #4a4a4a; --text: #d8d8d8; --muted: #9a9a9a; }
+  body { margin: 0; padding: 10px 12px; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, "Segoe UI", sans-serif; }
+  .row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; align-items: center; margin-bottom: 10px; }
+  .row > label:first-child { color: var(--muted); }
+  select, input[type=number] { width: 100%; box-sizing: border-box; height: 28px; padding: 0 6px; background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font: inherit; }
+  .pair { display: flex; gap: 6px; align-items: center; }
+  .pair input { width: 80px; }
+  .note { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
+  .hidden { display: none !important; }
+  button { height: 28px; padding: 0 10px; background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font: inherit; cursor: pointer; white-space: nowrap; }
+</style>
+</head>
+<body>
+  <!-- Temporizador -->
+  <div id="timer" class="hidden">
+    <div class="row"><label for="mode" data-i18n="t_mode">Modo</label><select id="mode"><option value="timer" data-i18n="t_mode_timer">Temporizador (cuenta atrás)</option><option value="stopwatch" data-i18n="t_mode_stopwatch">Cronómetro</option></select></div>
+    <div class="row" id="styleRow"><label for="style" data-i18n="t_style">Estilo</label><select id="style"><option value="digital" data-i18n="t_style_digital">Digital</option><option value="analog" data-i18n="t_style_analog">Agujas</option></select></div>
+    <div class="row" id="hundredthsRow"><label></label><label><input type="checkbox" id="hundredths"> <span data-i18n="t_hundredths">Mostrar centésimas</span></label></div>
+    <div class="row" id="durationRow"><label data-i18n="t_duration">Tiempo</label>
+      <div class="pair"><input type="number" id="minutes" min="0" max="999"> <span data-i18n="t_min">min</span> <input type="number" id="seconds" min="0" max="59"> <span data-i18n="t_sec">s</span></div></div>
+  </div>
+
+  <!-- Pomodoro -->
+  <div id="pomodoro" class="hidden">
+    <div class="row"><label for="work" data-i18n="t_work">Trabajo (min)</label><input type="number" id="work" min="1" max="600"></div>
+    <div class="row"><label for="short_break" data-i18n="t_short">Descanso corto (min)</label><input type="number" id="short_break" min="1" max="600"></div>
+    <div class="row"><label for="long_break" data-i18n="t_long">Descanso largo (min)</label><input type="number" id="long_break" min="1" max="600"></div>
+    <div class="row"><label for="rounds" data-i18n="t_rounds">Trabajos antes del largo</label><input type="number" id="rounds" min="1" max="12"></div>
+    <div class="row"><label></label><label><input type="checkbox" id="auto_next"> <span data-i18n="t_auto">Empezar sola la fase siguiente</span></label></div>
+  </div>
+
+  <div class="row" id="soundCheck"><label></label><label><input type="checkbox" id="sound"> <span data-i18n="t_sound">Sonar al acabar</span></label></div>
+  <div class="row" id="soundRow"><label for="sound_id" data-i18n="t_sound_which">Sonido</label>
+    <div class="pair"><select id="sound_id"></select><button id="play" data-i18n="t_play">Probar</button></div></div>
+  <input type="file" id="soundFile" accept=".wav,audio/wav" class="hidden">
+  <p class="note hidden" id="soundNote"></p>
+  <div class="row"><label for="click" data-i18n="t_click">Click</label><select id="click"></select></div>
+  <div class="row"><label for="double" data-i18n="t_double">Doble click</label><select id="double"></select></div>
+  <p class="note" id="note"></p>
+  <p class="note" data-i18n="t_end_note">Al acabar, la tecla parpadea; pulsarla lo para. Sigue contando aunque cambies de perfil.</p>
+<script src="i18n.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let ws = null, uuid = '', action = '', settings = {}, dial = false, kind = '';
+  const DEF = { mode: 'timer', style: 'digital', hundredths: false, minutes: 5, seconds: 0, work: 25, short_break: 5, long_break: 15, rounds: 4, auto_next: true, sound: true, sound_id: 'campana' };
+  // Sonidos: los cinco de serie (assets/sounds), el de Windows y uno propio
+  const SOUNDS = [['campana', 't_snd_bell'], ['digital', 't_snd_digital'], ['marimba', 't_snd_marimba'], ['alarma', 't_snd_alarm'], ['suave', 't_snd_soft'], ['cucaracha', 't_snd_cucaracha'], ['trombon', 't_snd_trombone'], ['boing', 't_snd_boing'], ['system', 't_snd_system']];
+  const send = (payload) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event: 'sendToPlugin', context: uuid, action, payload })); };
+  // Textos por clave (locales/<idioma>.json, sección pi): se traducen al pintarlos
+  const ACTS = [['toggle', 't_toggle'], ['reset', 't_reset'], ['skip', 't_skip'], ['edit', 't_edit'], ['none', 't_none']];
+  // Lo de serie, igual que en el plugin (timers.rs)
+  const stopwatch = () => kind === 'timer' && Object.assign({}, DEF, settings).mode === 'stopwatch';
+  const defaults = () => ['toggle', dial && !stopwatch() ? 'edit' : (kind === 'pomodoro' ? 'skip' : 'reset')];
+  function save() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event: 'setSettings', context: uuid, action, payload: settings })); }
+  const num = (id) => { $(id).onchange = () => { settings[id] = Math.max(0, Math.round(+$(id).value || 0)); save(); }; };
+  ['minutes', 'seconds', 'work', 'short_break', 'long_break', 'rounds'].forEach(num);
+  ['auto_next', 'sound'].forEach((id) => { $(id).onchange = () => { settings[id] = $(id).checked; show(); save(); }; });
+  $('sound_id').onchange = () => {
+    if ($('sound_id').value === 'pick') { $('soundFile').click(); show(); return; }
+    settings.sound_id = $('sound_id').value; save(); send({ request: 'play', sound: settings.sound_id });
+  };
+  $('play').onclick = () => send({ request: 'play', sound: Object.assign({}, DEF, settings).sound_id });
+  // Sonido propio: el WAV va al plugin, que lo guarda y devuelve su id
+  $('soundFile').onchange = (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => send({ request: 'sound', data: r.result });
+    r.readAsDataURL(f);
+  };
+  $('mode').onchange = () => { settings.mode = $('mode').value; show(); save(); };
+  $('style').onchange = () => { settings.style = $('style').value; save(); };
+  $('hundredths').onchange = () => { settings.hundredths = $('hundredths').checked; save(); };
+  ['click', 'double'].forEach((k) => { $(k).onchange = () => { settings[k] = $(k).value; save(); }; });
+  function show() {
+    const s = Object.assign({}, DEF, settings);
+    $('timer').classList.toggle('hidden', kind !== 'timer');
+    $('pomodoro').classList.toggle('hidden', kind !== 'pomodoro');
+    ['minutes', 'seconds', 'work', 'short_break', 'long_break', 'rounds'].forEach((id) => { $(id).value = s[id]; });
+    $('mode').value = s.mode; $('style').value = s.style; $('hundredths').checked = s.hundredths;
+    $('hundredthsRow').classList.toggle('hidden', !stopwatch());
+    // Las agujas solo en las teclas
+    $('styleRow').classList.toggle('hidden', dial);
+    // El cronómetro no tiene tiempo ni final (ni sonido)
+    $('durationRow').classList.toggle('hidden', stopwatch());
+    $('soundCheck').classList.toggle('hidden', stopwatch());
+    $('auto_next').checked = s.auto_next; $('sound').checked = s.sound;
+    $('soundRow').classList.toggle('hidden', !s.sound || stopwatch());
+    const own = s.sound_id.startsWith('custom:') ? [[s.sound_id, 't_snd_own']] : [];
+    $('sound_id').innerHTML = SOUNDS.concat(own).map(([v, key]) => `<option value="${v}">${T(key)}</option>`).join('')
+      + `<option value="pick">${T('t_snd_pick')}</option>`;
+    $('sound_id').value = s.sound_id;
+    // «Saltar» solo en el Pomodoro y «Modificar» solo en las ruedas
+    const acts = ACTS.filter(([v]) => (v !== 'skip' || kind === 'pomodoro') && (v !== 'edit' || (dial && !stopwatch())));
+    const [dc, dd] = defaults();
+    ['click', 'double'].forEach((k, i) => {
+      $(k).innerHTML = acts.map(([v, key]) => `<option value="${v}">${T(key)}</option>`).join('');
+      const v = s[k] && acts.some(([a]) => a === s[k]) ? s[k] : (i ? dd : dc);
+      $(k).value = v;
+    });
+    $('note').textContent = T(dial ? 't_note_dial' : 't_note_key');
+  }
+  window.connectElgatoStreamDeckSocket = (port, inUuid, registerEvent, info, actionInfo) => {
+    window.prismaLang(info);
+    uuid = inUuid;
+    const ai = typeof actionInfo === 'string' ? JSON.parse(actionInfo) : actionInfo;
+    action = ai.action;
+    kind = { 'com.malzar.prisma.t.timer': 'timer', 'com.malzar.prisma.t.pomodoro': 'pomodoro' }[action] || '';
+    dial = (ai.payload && ai.payload.controller) === 'Encoder';
+    settings = Object.assign({}, ai.payload && ai.payload.settings);
+    show();
+    ws = new WebSocket('ws://127.0.0.1:' + port);
+    ws.onopen = () => { ws.send(JSON.stringify({ event: registerEvent, uuid })); };
+    ws.onmessage = (m) => {
+      const msg = JSON.parse(m.data);
+      if (msg.event === 'didReceiveSettings' && msg.payload) { settings = Object.assign({}, msg.payload.settings); show(); }
+      if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.sound) {
+        settings.sound_id = msg.payload.sound; save(); show(); $('soundNote').classList.add('hidden'); send({ request: 'play', sound: settings.sound_id });
+      }
+      if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.soundError) { $('soundNote').textContent = msg.payload.soundError; $('soundNote').classList.remove('hidden'); }
+    };
+  };
+</script>
+</body>
+</html>

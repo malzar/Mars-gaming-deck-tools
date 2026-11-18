@@ -19,7 +19,8 @@ pub const COL_COUNT: usize = 6;
 pub const KEY_COUNT: usize = ROW_COUNT * COL_COUNT;
 pub const ENCODER_COUNT: usize = 0;
 
-#[allow(non_camel_case_types)]
+/// Modelos de la familia, con los nombres que usa opendeck-akp153
+#[allow(non_camel_case_types, clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
 pub enum Kind {
     HSV293S,

@@ -1,4 +1,4 @@
-//! MGDC (Mars Gaming Deck Controller)
+//! Prisma: un plugin de OpenDeck para controlarlos a todos
 //!
 //! Plugin de dispositivo para OpenDeck que controla en un solo proceso los decks
 //! de la familia AKP153 (Mars Gaming MSD-ONE) y AKP05 / N4 (Mars Gaming MSD-PRO).
@@ -9,7 +9,6 @@
 //!
 //! Licencia GPL-3.0.
 
-use device::handle_error;
 use mirajazz::device::Device;
 use openaction::*;
 use std::{
@@ -24,21 +23,46 @@ use watcher::watcher_task;
 #[cfg(not(target_os = "windows"))]
 use tokio::signal::unix::{SignalKind, signal};
 
+mod actions;
 mod animation;
+mod astro;
+mod audio;
+mod audio_actions;
 mod background;
 mod calibration;
+mod canvas;
+mod clicks;
 mod config;
-// PRUEBAS: numerar pantallas (borrar luego)
-mod debug_numbers;
+mod desktop;
 mod device;
 mod family;
+
+/// Carpeta de configuración de Prisma (%APPDATA%\prisma)
+pub fn app_dir() -> Option<std::path::PathBuf> {
+    Some(dirs::config_dir()?.join("prisma"))
+}
+
+mod gestures;
+mod hierarchy;
+mod i18n;
 mod led_config;
+mod links;
+mod media;
 mod panel;
+mod player;
 mod power;
+mod profile_icons;
+mod profile_keys;
+mod profiles;
 mod reveal;
 mod schedule;
 mod settings;
+mod sounds;
+mod svg;
+mod timers;
 mod watcher;
+mod weather;
+mod widgets;
 
 pub static DEVICES: LazyLock<RwLock<HashMap<String, Device>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
@@ -47,6 +71,8 @@ pub static TOKENS: LazyLock<RwLock<HashMap<String, CancellationToken>>> =
 pub static FLUSH_NOTIFY: LazyLock<RwLock<HashMap<String, Arc<Notify>>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 pub static TRACKER: LazyLock<Mutex<TaskTracker>> = LazyLock::new(|| Mutex::new(TaskTracker::new()));
+/// OpenDeck se está cerrando: no se reconecta ningún deck
+pub static CLOSING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 struct GlobalEventHandler {}
 impl openaction::GlobalEventHandler for GlobalEventHandler {
@@ -66,6 +92,18 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
 
         // Panel de ajustes y planificador de brillo/apagado
         tracker.spawn(panel::serve());
+        // Acciones de audio: repinta lo que cambie por fuera (volumen, canción)
+        tracker.spawn(audio_actions::poll_task());
+        tracker.spawn(audio_actions::player_task());
+        // Perfiles enlazados entre decks
+        tracker.spawn(links::watch_task());
+        tracker.spawn(profiles::anim_task());
+        tracker.spawn(profile_keys::watch_task());
+        // Hora, fecha y tiempo
+        tracker.spawn(widgets::tick_task());
+        tracker.spawn(timers::tick_task());
+        // Recuerda la última ventana de reproductor activa (método automático)
+        media::start_tracking();
         let scheduler_token = CancellationToken::new();
         tracker.spawn(power::scheduler_task(scheduler_token.clone()));
         TOKENS
@@ -73,7 +111,7 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
             .await
             .insert("_scheduler_task".to_string(), scheduler_token);
 
-        log::info!("MGDC initialized");
+        log::info!("Prisma initialized");
 
         Ok(())
     }
@@ -85,26 +123,14 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
     ) -> EventHandlerResult {
         log::debug!("Asked to set image: {:#?}", event);
 
-        let id = event.device.clone();
-
-        // Durante una animación de prueba no se pintan las teclas de OpenDeck
-        if animation::busy(&id).await {
+        // Teclas virtuales de los perfiles: no existen en el deck, solo se guardan
+        if profiles::intercept(&event).await {
             return Ok(());
         }
 
-        // Cascada de iconos en marcha: la imagen se pinta luego, a su turno
-        let Some(event) = reveal::intercept(event).await else {
-            return Ok(());
-        };
-
-        if let Some(device) = DEVICES.read().await.get(&event.device) {
-            family::set_image(device, &id, event)
-                .await
-                .map_err(async |err| handle_error(&id, err).await)
-                .ok();
-        } else {
-            log::error!("Received event for unknown device: {}", event.device);
-        }
+        // Rueda de perfiles: se le pega el icono del perfil (OpenDeck no lo pinta)
+        let event = profiles::compose(event).await;
+        paint(event).await;
 
         Ok(())
     }
@@ -154,19 +180,42 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
     }
 }
 
-struct ActionEventHandler {}
-impl openaction::ActionEventHandler for ActionEventHandler {}
+
+/// Pinta en el deck una imagen que manda OpenDeck (o Prisma, como los GIF de la
+/// rueda de perfiles)
+pub async fn paint(event: SetImageEvent) {
+    let id = event.device.clone();
+    // Durante una animación de prueba no se pintan las teclas de OpenDeck
+    if animation::busy(&id).await {
+        return;
+    }
+
+    // Cascada de iconos en marcha: la imagen se pinta luego, a su turno
+    let Some(event) = reveal::intercept(event).await else {
+        return;
+    };
+
+    if let Some(device) = DEVICES.read().await.get(&event.device) {
+        family::set_image(device, &id, event)
+            .await
+            .map_err(|err| log::warn!("No se pudo pintar en {id}: {err}"))
+            .ok();
+    } else {
+        log::error!("Received event for unknown device: {}", event.device);
+    }
+}
 
 async fn shutdown() {
+    CLOSING.store(true, std::sync::atomic::Ordering::SeqCst);
     let tokens = TOKENS.write().await;
 
-    for (_, token) in tokens.iter() {
+    for token in tokens.values() {
         token.cancel();
     }
 }
 
 async fn connect() {
-    if let Err(error) = init_plugin(GlobalEventHandler {}, ActionEventHandler {}).await {
+    if let Err(error) = init_plugin(GlobalEventHandler {}, actions::Handler).await {
         log::error!("Failed to initialize plugin: {}", error);
         exit(1);
     }

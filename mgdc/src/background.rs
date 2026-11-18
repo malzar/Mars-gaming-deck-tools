@@ -136,7 +136,7 @@ pub async fn upload(id: &str, img: &DynamicImage, fix: Fix) -> Result<(), String
     {
         // Bloqueo exclusivo: nada más escribe en el deck mientras se sube
         let devices = DEVICES.write().await;
-        let device = devices.get(id).ok_or("El deck no está conectado")?;
+        let device = devices.get(id).ok_or(crate::i18n::t("error.deck_disconnected"))?;
         let model = Model::from_vid_pid(device.vid, device.pid).ok_or("Modelo desconocido")?;
         let data = encode(&model, img, fix)?;
         log::info!(
@@ -150,7 +150,7 @@ pub async fn upload(id: &str, img: &DynamicImage, fix: Fix) -> Result<(), String
         let res = send(device, &model, &data).await;
         // El deck tarda un poco en guardar la imagen
         tokio::time::sleep(Duration::from_millis(800)).await;
-        res.map_err(|e| format!("Error al enviar el fondo: {e}"))?;
+        res.map_err(|e| crate::i18n::tf("error.background_send", &[&e]))?;
 
         device
             .clear_all_button_images()
@@ -168,13 +168,54 @@ pub async fn upload(id: &str, img: &DynamicImage, fix: Fix) -> Result<(), String
     Ok(())
 }
 
+/// Fondo de Prisma: se pone al conectar un deck que todavía no tiene fondo
+/// guardado (si ya tiene uno, no se toca). El logo va entero y centrado, sobre
+/// su mismo azul de fondo.
+pub async fn ensure_default(id: String) {
+    if saved_path(&id).is_some_and(|p| p.exists()) {
+        return;
+    }
+    let Some(path) = std::env::current_exe().ok().and_then(|e| Some(e.parent()?.join("assets").join("background.jpg"))) else {
+        return;
+    };
+    let logo = match image::open(&path) {
+        Ok(l) => l,
+        Err(e) => {
+            log::warn!("Fondo por defecto: no se pudo leer {}: {e}", path.display());
+            return;
+        }
+    };
+    let model = DEVICES.read().await.get(&id).and_then(|d| Model::from_vid_pid(d.vid, d.pid));
+    let Some(model) = model else { return };
+    let img = default_image(&model, &logo);
+    // Que termine antes la animación de arranque
+    tokio::time::sleep(Duration::from_secs(4)).await;
+    match upload(&id, &img, Fix::None).await {
+        Ok(()) => {
+            save_copy(&id, &img);
+            log::info!("Fondo por defecto de Prisma puesto en {id}");
+        }
+        Err(e) => log::warn!("Fondo por defecto en {id}: {e}"),
+    }
+}
+
+/// El logo al tamaño de la pantalla del deck, centrado y sin recortar
+fn default_image(model: &Model, logo: &DynamicImage) -> DynamicImage {
+    let (w, h) = screen_size(model);
+    let mut canvas = image::RgbImage::from_pixel(w, h, image::Rgb([24, 29, 49]));
+    let side = w.min(h);
+    let l = logo.resize(side, side, FilterType::Lanczos3).to_rgb8();
+    image::imageops::overlay(&mut canvas, &l, ((w - l.width()) / 2) as i64, ((h - l.height()) / 2) as i64);
+    DynamicImage::ImageRgb8(canvas)
+}
+
 /// Copia de la última imagen subida, para enseñarla en el panel
 pub fn saved_path(id: &str) -> Option<PathBuf> {
     let safe: String = id
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '_' })
         .collect();
-    Some(dirs::config_dir()?.join("mgdc").join("backgrounds").join(format!("{safe}.png")))
+    Some(crate::app_dir()?.join("backgrounds").join(format!("{safe}.png")))
 }
 
 pub fn save_copy(id: &str, img: &DynamicImage) {

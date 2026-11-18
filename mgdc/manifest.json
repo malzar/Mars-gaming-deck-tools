@@ -1,17 +1,362 @@
 {
-  "Name": "MGDC (Mars Gaming Deck Controller)",
-  "Description": "Un solo plugin para los decks Mars Gaming MSD-ONE (familia AKP153) y MSD-PRO (familia AKP05 / N4), y sus clones de Mirabox y Ajazz.",
+  "Name": "Prisma",
+  "Description": "Prisma, un plugin para controlarlos a todos: los decks Mars Gaming MSD-ONE (familia AKP153) y MSD-PRO (familia AKP05 / N4), y sus clones de Mirabox y Ajazz.",
   "Author": "Malzar",
-  "Version": "0.6.1",
-  "PluginUUID": "com.malzar.mgdc",
-  "CodePathWin": "mgdc.exe",
+  "Version": "0.9.0",
+  "PluginUUID": "com.malzar.prisma",
+  "CodePathWin": "prisma.exe",
   "Icon": "assets/icon",
-  "Category": "Hardware",
+  "Category": "Prisma",
   "URL": "https://github.com/malzar/Mars-gaming-deck-tools",
   "OS": [
-    { "Platform": "windows", "MinimumVersion": "10" }
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
   ],
   "HasSettingsInterface": true,
-  "Actions": [],
-  "DeviceNamespace": "99"
+  "Actions": [
+    {
+      "Name": "Reproducir / Pausa",
+      "UUID": "com.malzar.prisma.audio.playpause",
+      "Tooltip": "Reproduce o pausa lo que esté sonando (Spotify, navegador, VLC…)",
+      "Icon": "assets/actions/playpause",
+      "PropertyInspectorPath": "pi/audio.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/playpause",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Detener",
+      "UUID": "com.malzar.prisma.audio.stop",
+      "Tooltip": "Detiene la reproducción",
+      "Icon": "assets/actions/stop",
+      "PropertyInspectorPath": "pi/audio.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/stop",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Anterior",
+      "UUID": "com.malzar.prisma.audio.prev",
+      "Tooltip": "Canción anterior",
+      "Icon": "assets/actions/prev",
+      "PropertyInspectorPath": "pi/audio.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/prev",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Siguiente",
+      "UUID": "com.malzar.prisma.audio.next",
+      "Tooltip": "Canción siguiente",
+      "Icon": "assets/actions/next",
+      "PropertyInspectorPath": "pi/audio.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/next",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Subir volumen",
+      "UUID": "com.malzar.prisma.audio.volup",
+      "Tooltip": "Sube el volumen general o el de un programa",
+      "Icon": "assets/actions/volup",
+      "PropertyInspectorPath": "pi/audio.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/volup",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Bajar volumen",
+      "UUID": "com.malzar.prisma.audio.voldown",
+      "Tooltip": "Baja el volumen general o el de un programa",
+      "Icon": "assets/actions/voldown",
+      "PropertyInspectorPath": "pi/audio.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/voldown",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Silenciar",
+      "UUID": "com.malzar.prisma.audio.mute",
+      "Tooltip": "Silencia o quita el silencio del volumen general o de un programa",
+      "Icon": "assets/actions/mute",
+      "PropertyInspectorPath": "pi/audio.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/mute",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Volumen (rueda)",
+      "UUID": "com.malzar.prisma.audio.dial",
+      "Tooltip": "Gira para cambiar el volumen general o el de un programa; pulsa para silenciar",
+      "Icon": "assets/actions/dial-icon",
+      "PropertyInspectorPath": "pi/audio.html",
+      "Controllers": [
+        "Encoder"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/dial-icon",
+          "ShowTitle": false
+        }
+      ],
+      "Encoder": {
+        "layout": "layouts/audio-dial.json",
+        "Icon": "assets/actions/dial-icon",
+        "TriggerDescription": {
+          "Rotate": "Volumen",
+          "Push": "Silenciar",
+          "Touch": "Silenciar"
+        }
+      }
+    },
+    {
+      "Name": "Perfiles (rueda)",
+      "UUID": "com.malzar.prisma.profiles",
+      "Tooltip": "Gira para recorrer los perfiles del mismo nivel (con vuelta al principio); pulsa para cambiar",
+      "Icon": "assets/actions/profiles",
+      "PropertyInspectorPath": "pi/profiles.html",
+      "Controllers": [
+        "Encoder"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/profiles",
+          "ShowTitle": false
+        }
+      ],
+      "Encoder": {
+        "layout": "layouts/audio-dial.json",
+        "Icon": "assets/actions/profiles",
+        "TriggerDescription": {
+          "Rotate": "Elegir perfil",
+          "Push": "Cambiar",
+          "Touch": "Cambiar"
+        }
+      }
+    },
+    {
+      "Name": "Entrar / cambiar perfil",
+      "UUID": "com.malzar.prisma.profilego",
+      "Tooltip": "Cambia al perfil elegido con la rueda (o a uno fijo) y entra en sus subperfiles; mantén pulsado para subir un nivel",
+      "Icon": "assets/actions/profile-go",
+      "PropertyInspectorPath": "pi/profile-go.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/profile-go",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Perfil actual",
+      "UUID": "com.malzar.prisma.profilenow",
+      "Tooltip": "Enseña el perfil elegido con la rueda y si es el activo. No hace nada al pulsar",
+      "Icon": "assets/actions/profile-now",
+      "PropertyInspectorPath": "pi/profile-now.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/profile-now",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Hora",
+      "UUID": "com.malzar.prisma.w.clock",
+      "Tooltip": "La hora: digital o con agujas; en la rueda, con la fecha",
+      "Icon": "assets/actions/clock",
+      "PropertyInspectorPath": "pi/widgets.html",
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/clock",
+          "ShowTitle": false
+        }
+      ],
+      "Encoder": {
+        "layout": "layouts/audio-dial.json",
+        "Icon": "assets/actions/clock",
+        "TriggerDescription": {
+          "Rotate": "—",
+          "Push": "—",
+          "Touch": "—"
+        }
+      }
+    },
+    {
+      "Name": "Fecha",
+      "UUID": "com.malzar.prisma.w.date",
+      "Tooltip": "El día de la semana, el día y el mes",
+      "Icon": "assets/actions/date",
+      "PropertyInspectorPath": "pi/widgets.html",
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/date",
+          "ShowTitle": false
+        }
+      ],
+      "Encoder": {
+        "layout": "layouts/audio-dial.json",
+        "Icon": "assets/actions/date",
+        "TriggerDescription": {
+          "Rotate": "—",
+          "Push": "—",
+          "Touch": "—"
+        }
+      }
+    },
+    {
+      "Name": "El tiempo",
+      "UUID": "com.malzar.prisma.w.weather",
+      "Tooltip": "El tiempo ahora y la previsión (Open-Meteo). Con varias vistas, la rueda pasa de una a otra",
+      "Icon": "assets/actions/weather",
+      "PropertyInspectorPath": "pi/widgets.html",
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/weather",
+          "ShowTitle": false
+        }
+      ],
+      "Encoder": {
+        "layout": "layouts/audio-dial.json",
+        "Icon": "assets/actions/weather",
+        "TriggerDescription": {
+          "Rotate": "Cambiar de vista",
+          "Push": "Click / doble click",
+          "Touch": "Click / doble click"
+        }
+      }
+    },
+    {
+      "Name": "Temporizador",
+      "UUID": "com.malzar.prisma.t.timer",
+      "Tooltip": "Cuenta atrás con el tiempo que pongas; en la rueda, el tiempo se cambia girando",
+      "Icon": "assets/actions/timer",
+      "PropertyInspectorPath": "pi/timers.html",
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/timer",
+          "ShowTitle": false
+        }
+      ],
+      "Encoder": {
+        "layout": "layouts/audio-dial.json",
+        "Icon": "assets/actions/timer",
+        "TriggerDescription": {
+          "Rotate": "Cambiar el tiempo",
+          "Push": "Click / doble click",
+          "Touch": "Click / doble click"
+        }
+      }
+    },
+    {
+      "Name": "Pomodoro",
+      "UUID": "com.malzar.prisma.t.pomodoro",
+      "Tooltip": "Trabajo y descansos (25 + 5 de serie), con descanso largo cada pocas rondas",
+      "Icon": "assets/actions/pomodoro",
+      "PropertyInspectorPath": "pi/timers.html",
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/pomodoro",
+          "ShowTitle": false
+        }
+      ],
+      "Encoder": {
+        "layout": "layouts/audio-dial.json",
+        "Icon": "assets/actions/pomodoro",
+        "TriggerDescription": {
+          "Rotate": "Cambiar el tiempo",
+          "Push": "Click / doble click",
+          "Touch": "Click / doble click"
+        }
+      }
+    }
+  ],
+  "DeviceNamespace": "99",
+  "CategoryIcon": "assets/category"
 }

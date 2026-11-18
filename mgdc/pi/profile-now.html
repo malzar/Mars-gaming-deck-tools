@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title data-i18n="prisma_perfil_actual">Prisma · Perfil actual</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 10px 12px; background: #2d2d2d; color: #d8d8d8; font: 13px/1.4 system-ui, "Segoe UI", sans-serif; }
+  .note { color: #9a9a9a; font-size: 12px; margin: 4px 0 10px; }
+</style>
+</head>
+<body>
+  <p class="note" data-i18n="ensena_el_perfil_elegido">Enseña el perfil elegido con la rueda de perfiles, con su nivel encima («raíz» o el perfil del que cuelga). Pone «● activo» cuando ya es el perfil en uso.</p>
+  <p class="note" data-i18n="es_solo_para_ver">Es solo para ver: pulsarla no hace nada.</p>
+<script src="i18n.js"></script>
+<script>
+  window.connectElgatoStreamDeckSocket = (port, inUuid, registerEvent, info) => {
+    window.prismaLang(info);
+    const ws = new WebSocket('ws://127.0.0.1:' + port);
+    ws.onopen = () => ws.send(JSON.stringify({ event: registerEvent, uuid: inUuid }));
+  };
+</script>
+</body>
+</html>

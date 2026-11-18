@@ -10,6 +10,8 @@ pub struct DeviceInfo {
 	pub rows: u8,
 	pub columns: u8,
 	pub encoders: u8,
+	/// Teclas extra que solo existen en OpenDeck (fila aparte en el editor)
+	pub touchpoints: u8,
 	pub r#type: u8,
 }
 
@@ -34,6 +36,7 @@ impl OutboundEventManager {
 		rows: u8,
 		columns: u8,
 		encoders: u8,
+		touchpoints: u8,
 		r#type: u8,
 	) -> Result<(), Error> {
 		self.send_event(PayloadEvent {
@@ -44,6 +47,7 @@ impl OutboundEventManager {
 				rows,
 				columns,
 				encoders,
+				touchpoints,
 				r#type,
 			},
 		})

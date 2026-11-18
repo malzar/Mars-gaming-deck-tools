@@ -53,13 +53,13 @@ pub fn day_window(s: &DeviceSettings, now: &DateTime<Local>) -> (i32, i32) {
         parse_hhmm(&sc.night_start).unwrap_or(21 * 60),
     );
 
-    if sc.mode == ScheduleMode::Sun {
-        if let Some((rise, set)) = sun_times(sc.lat, sc.lon, now.date_naive()) {
-            let rise = minutes_of(&rise.with_timezone(&Local)) + sc.offset_minutes;
-            let set = minutes_of(&set.with_timezone(&Local)) + sc.offset_minutes;
-            if rise < set {
-                return (rise, set);
-            }
+    if sc.mode == ScheduleMode::Sun
+        && let Some((rise, set)) = sun_times(sc.lat, sc.lon, now.date_naive())
+    {
+        let rise = minutes_of(&rise.with_timezone(&Local)) + sc.offset_minutes;
+        let set = minutes_of(&set.with_timezone(&Local)) + sc.offset_minutes;
+        if rise < set {
+            return (rise, set);
         }
     }
 

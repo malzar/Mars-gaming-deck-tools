@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title data-i18n="prisma_audio">Prisma · Audio</title>
+<style>
+  :root { color-scheme: dark; --bg: #2d2d2d; --field: #3d3d3d; --border: #4a4a4a; --text: #d8d8d8; --muted: #9a9a9a; --accent: #4aa3ff; }
+  body { margin: 0; padding: 10px 12px; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, "Segoe UI", sans-serif; }
+  .row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px; align-items: center; margin-bottom: 10px; }
+  .row > label:first-child { color: var(--muted); }
+  select, input[type=number], input[type=text] { width: 100%; box-sizing: border-box; height: 28px; padding: 0 6px; background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font: inherit; }
+  input[type=number] { width: 80px; }
+  button { height: 28px; padding: 0 10px; background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font: inherit; cursor: pointer; }
+  .hidden { display: none !important; }
+  .note { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
+  .inline { display: flex; gap: 6px; align-items: center; }
+</style>
+</head>
+<body>
+  <div class="row hidden" id="targetRow">
+    <label for="target" data-i18n="volumen_de">Volumen de</label>
+    <div class="inline">
+      <select id="target"></select>
+      <button id="refresh" title="Volver a buscar programas con sonido" data-i18n-title="volver_a_buscar_programas">↻</button>
+    </div>
+  </div>
+  <div class="row hidden" id="otherRow">
+    <label for="other" data-i18n="programa">Programa</label>
+    <div class="inline">
+      <input type="text" id="other" placeholder="spotify.exe">
+      <button id="pick" data-i18n="elegir">Elegir…</button>
+      <input type="file" id="file" accept=".exe" class="hidden">
+    </div>
+  </div>
+  <p class="note hidden" id="otherNote" data-i18n="escribe_el_nombre_del">Escribe el nombre del ejecutable o elígelo. Funciona aunque ahora no esté sonando: cuando suene, la acción lo controla.</p>
+
+  <div class="row hidden" id="stepRow">
+    <label for="step" data-i18n="paso">Paso</label>
+    <div class="inline"><input type="number" id="step" min="1" max="20" step="1"> <span>%</span></div>
+  </div>
+
+  <div class="row hidden" id="titleRow">
+    <label for="showTitle" data-i18n="lo_que_suena">Lo que suena</label>
+    <label class="inline"><input type="checkbox" id="showTitle"> <span id="titleText" data-i18n="mostrar_el_titulo">Mostrar el título</span></label>
+  </div>
+
+  <div class="row hidden" id="barRow">
+    <label for="bar" data-i18n="barra">Barra</label>
+    <select id="bar">
+      <option value="none" data-i18n="nada">Nada</option>
+      <option value="color" data-i18n="color_plano">Color plano</option>
+      <option value="waves" data-i18n="ondas">Ondas</option>
+      <option value="eq" data-i18n="ecualizador">Ecualizador</option>
+      <option value="eqbg" data-i18n="ecualizador_de_fondo">Ecualizador de fondo</option>
+      <option value="gif" data-big data-i18n="gif_propio">GIF propio</option>
+    </select>
+  </div>
+  <div class="row hidden" id="dialRow">
+    <label for="dialStyle" data-i18n="pantalla">Pantalla</label>
+    <select id="dialStyle">
+      <option value="bar" data-i18n="barra_de_volumen">Barra de volumen</option>
+      <option value="eq" data-i18n="ecualizador_en_lugar_de">Ecualizador en lugar de la barra</option>
+      <option value="eqbg" data-i18n="ecualizador_de_fondo">Ecualizador de fondo</option>
+    </select>
+  </div>
+  <div class="row hidden" id="colorRow">
+    <label for="barColor" data-i18n="color">Color</label>
+    <input type="color" id="barColor">
+  </div>
+  <div class="row hidden" id="eqRow">
+    <label for="eqMode" data-i18n="ecualizador">Ecualizador</label>
+    <select id="eqMode">
+      <option value="sim" data-i18n="simulado">Simulado</option>
+      <option value="level" data-i18n="con_el_volumen_real">Con el volumen real</option>
+    </select>
+  </div>
+  <div class="row hidden" id="gifRow">
+    <label data-i18n="gif">GIF</label>
+    <div class="inline">
+      <button id="gifPick" data-i18n="elegir_gif">Elegir GIF…</button>
+      <span id="gifState" class="note" style="margin:0"></span>
+      <input type="file" id="gifFile" accept="image/gif" class="hidden">
+    </div>
+  </div>
+  <p class="note hidden" id="smallNote" data-i18n="en_el_msd_one">En el MSD-ONE no hay GIF y lo que se mueve va a la mitad de fotogramas: el deck aguanta pocos cambios por segundo.</p>
+
+  <p class="note" id="note"></p>
+
+<script src="i18n.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let ws = null, uuid = '', action = '', settings = {}, apps = [], small = false;
+  const OTHER = '__other__';
+
+  const kind = () => action.split('.').pop();
+  const usesTarget = () => ['volup', 'voldown', 'mute', 'dial'].includes(kind());
+  const usesStep = () => ['volup', 'voldown', 'dial'].includes(kind());
+  const isGeneral = (t) => !t || t.toLowerCase() === 'general';
+  const display = (t) => {
+    if (isGeneral(t)) return T('general');
+    const b = t.replace(/\.exe$/i, '');
+    return b.charAt(0).toUpperCase() + b.slice(1);
+  };
+
+  function send(event, payload) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event, context: uuid, action, payload }));
+  }
+  function save() { send('setSettings', settings); }
+
+  function renderTargets() {
+    const t = settings.target || 'general';
+    const ids = apps.map((a) => a.id);
+    let html = `<option value="general">${T('general')}</option>`;
+    html += apps.map((a) => `<option value="${a.id}">${a.name}</option>`).join('');
+    // El programa guardado aunque ahora no esté sonando
+    if (!isGeneral(t) && !ids.includes(t.toLowerCase())) html += `<option value="${t}">${display(t)} ${T('sin_sonido_ahora')}</option>`;
+    html += `<option value="${OTHER}">${T('otro_programa')}</option>`;
+    $('target').innerHTML = html;
+    $('target').value = isGeneral(t) ? 'general' : (ids.includes(t.toLowerCase()) ? t.toLowerCase() : t);
+  }
+
+  function update() {
+    const k = kind();
+    $('targetRow').classList.toggle('hidden', !usesTarget());
+    $('stepRow').classList.toggle('hidden', !usesStep());
+    const other = $('target').value === OTHER;
+    $('otherRow').classList.toggle('hidden', !usesTarget() || !other);
+    $('otherNote').classList.toggle('hidden', !usesTarget() || !other);
+    // Título: en Reproducir/Pausa, y en la rueda solo si es el volumen general
+    const titleOk = k === 'playpause' || (k === 'dial' && isGeneral(settings.target));
+    $('titleRow').classList.toggle('hidden', !titleOk);
+    // Barra de abajo (solo con lo que suena en Reproducir/Pausa)
+    const barOk = k === 'playpause' && (settings.show_title ?? true);
+    document.querySelectorAll('#bar [data-big]').forEach((o) => { o.hidden = small; o.disabled = small; });
+    let bar = settings.bar || 'color';
+    if (small && bar === 'gif') bar = 'color';
+    $('bar').value = bar;
+    $('barRow').classList.toggle('hidden', !barOk);
+    // Rueda: estilo de la pantalla (con ecualizador o no)
+    const dialStyle = settings.dial_style || 'bar';
+    $('dialStyle').value = dialStyle;
+    $('dialRow').classList.toggle('hidden', k !== 'dial');
+    const dialEq = k === 'dial' && dialStyle !== 'bar';
+    $('colorRow').classList.toggle('hidden', !dialEq && (!barOk || !['color', 'waves', 'eq', 'eqbg'].includes(bar)));
+    $('eqRow').classList.toggle('hidden', !dialEq && (!barOk || !['eq', 'eqbg'].includes(bar)));
+    $('gifRow').classList.toggle('hidden', !barOk || bar !== 'gif');
+    $('smallNote').classList.toggle('hidden', !barOk || !small);
+    $('barColor').value = settings.bar_color || '#2ecc71';
+    $('eqMode').value = settings.eq_mode || 'level';
+    if (!$('gifState').dataset.busy) $('gifState').textContent = settings.gif ? T('gif_guardado') : T('sin_gif');
+    $('titleText').textContent = k === 'dial' ? T('mostrar_el_titulo_y') : T('mostrar_el_titulo_en');
+    $('step').value = settings.step ?? 2;
+    $('showTitle').checked = settings.showTitle ?? settings.show_title ?? true;
+    $('note').textContent = {
+      playpause: T('manda_la_orden_al'),
+      dial: T('gira_para_cambiar_el'),
+    }[k] || '';
+  }
+
+  $('target').onchange = () => {
+    if ($('target').value !== OTHER) { settings.target = $('target').value; save(); }
+    else { $('other').value = ''; $('other').focus(); }
+    update();
+  };
+  $('other').onchange = () => {
+    const v = $('other').value.trim().toLowerCase();
+    if (!v) return;
+    settings.target = v.endsWith('.exe') ? v : v + '.exe';
+    save(); renderTargets(); update();
+  };
+  $('pick').onclick = () => $('file').click();
+  $('file').onchange = (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    $('other').value = f.name; $('other').onchange();
+  };
+  $('refresh').onclick = () => send('sendToPlugin', { request: 'apps' });
+  $('step').onchange = () => {
+    settings.step = Math.min(20, Math.max(1, Math.round(+$('step').value || 2)));
+    $('step').value = settings.step; save();
+  };
+  $('dialStyle').onchange = () => { settings.dial_style = $('dialStyle').value; save(); update(); };
+  $('bar').onchange = () => { settings.bar = $('bar').value; save(); update(); };
+  $('barColor').oninput = () => { settings.bar_color = $('barColor').value; save(); };
+  $('eqMode').onchange = () => { settings.eq_mode = $('eqMode').value; save(); };
+  $('gifPick').onclick = () => $('gifFile').click();
+  $('gifFile').onchange = (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    $('gifState').dataset.busy = '1'; $('gifState').textContent = T('guardando');
+    const r = new FileReader();
+    r.onload = () => send('sendToPlugin', { request: 'gif', data: r.result });
+    r.readAsDataURL(f);
+  };
+  $('showTitle').onchange = () => { settings.show_title = $('showTitle').checked; delete settings.showTitle; save(); update(); };
+
+  // Lo llama OpenDeck al abrir la ventana de ajustes
+  window.connectElgatoStreamDeckSocket = (port, inUuid, registerEvent, info, actionInfo) => {
+    window.prismaLang(info);
+    uuid = inUuid;
+    const ai = typeof actionInfo === 'string' ? JSON.parse(actionInfo) : actionInfo;
+    action = ai.action;
+    settings = Object.assign({ target: 'general', step: 2, show_title: true, bar: 'color', bar_color: '#2ecc71', eq_mode: 'level', gif: '', dial_style: 'bar' }, ai.payload && ai.payload.settings);
+    renderTargets(); update();
+    ws = new WebSocket('ws://127.0.0.1:' + port);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ event: registerEvent, uuid }));
+      if (usesTarget()) send('sendToPlugin', { request: 'apps' });
+      if (kind() === 'playpause') send('sendToPlugin', { request: 'info' });
+    };
+    ws.onmessage = (m) => {
+      const msg = JSON.parse(m.data);
+      const p = msg.event === 'sendToPropertyInspector' ? msg.payload || {} : null;
+      if (p && p.apps) { apps = p.apps; renderTargets(); update(); }
+      if (p && 'small' in p) { small = !!p.small; update(); }
+      if (p && p.gif) { settings.gif = p.gif; settings.bar = 'gif'; save(); delete $('gifState').dataset.busy; update(); }
+      if (p && p.gifError) { delete $('gifState').dataset.busy; $('gifState').textContent = p.gifError; }
+      if (msg.event === 'didReceiveSettings' && msg.payload) {
+        settings = Object.assign(settings, msg.payload.settings); renderTargets(); update();
+      }
+    };
+  };
+</script>
+</body>
+</html>

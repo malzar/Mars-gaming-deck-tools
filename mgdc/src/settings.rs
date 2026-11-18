@@ -1,4 +1,4 @@
-//! Ajustes de MGDC por deck, guardados en %APPDATA%\mgdc\settings.json
+//! Ajustes de Prisma por deck, guardados en %APPDATA%\prisma\settings.json
 
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf, sync::LazyLock};
@@ -64,8 +64,32 @@ pub enum AnimKind {
     Fade,
     /// GIF propio repartido por la cuadrícula de teclas
     Gif,
-    /// Tus propios iconos aparecen (o se van) tecla a tecla
+    /// Retirada ("Tus iconos"; se conserva para no romper ajustes guardados)
     Cascade,
+    /// Una sola tecla encendida que recorre el deck de la primera a la última
+    Chase,
+    /// Flecha que avanza de izquierda a derecha: la fila del centro va delante
+    Arrow,
+    /// Retirada (se conserva para no romper ajustes guardados; se trata como Ninguna)
+    Rows,
+    /// Teclas al azar, de una en una y sin repetir
+    Random,
+    /// Zigzag: una fila a la derecha, la siguiente a la izquierda
+    Snake,
+    /// Retirada (se conserva para no romper ajustes guardados; se trata como Ninguna)
+    Spiral,
+    /// Una tecla que rebota en diagonal contra los bordes
+    Bounce,
+    /// Dos teclas que salen de los extremos y se encuentran en el centro
+    Meet,
+    /// Gotas que caen por columnas al azar
+    Rain,
+    /// Dos teclas opuestas que giran por el borde y luego por el centro
+    Windmill,
+    /// Dos teclas que rebotan en diagonal en espejo y se cruzan
+    Cross,
+    /// Pareja arriba-abajo hacia la derecha y vuelta por la fila del centro
+    Swing,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,18 +101,30 @@ pub struct Animation {
     pub palette: String,
     /// Colores "#rrggbb": uno si es "un color", varios si es una paleta
     pub colors: Vec<String>,
+    /// Cada tecla de un color al azar (en vez de los colores de arriba)
+    pub random_colors: bool,
+    /// Pasos de estela (1-3): cuántos pasos tarda en apagarse una tecla
+    pub trail: u8,
+    /// Fijo: sin estela, las teclas se quedan encendidas y al final se apagan todas de golpe
+    pub fixed: bool,
+    /// Invertir: de abajo arriba y de derecha a izquierda (girada 180°)
+    pub reverse: bool,
 }
 
 impl Animation {
     fn new(kind: AnimKind) -> Self {
         Self {
             kind,
-            duration_ms: 1500,
+            duration_ms: 800,
             palette: "Arcoíris".into(),
             colors: vec![
                 "#ff0000".into(), "#ff8a00".into(), "#ffe600".into(), "#00d84a".into(),
                 "#00b3ff".into(), "#5a3dff".into(), "#d400ff".into(),
             ],
+            random_colors: false,
+            trail: 3,
+            fixed: false,
+            reverse: false,
         }
     }
 }
@@ -106,6 +142,24 @@ pub struct Animations {
     pub shutdown: Animation,
     /// Al terminar el cierre: true = se ve el fondo del deck, false = pantalla apagada
     pub end_with_background: bool,
+    /// Al terminar el cierre se deja el logo de Prisma (gana a lo anterior)
+    pub end_with_logo: bool,
+    /// Cómo se queda el deck al terminar el cierre (si falta, se usan los dos de arriba)
+    pub ending: Option<EndKind>,
+}
+
+/// Cómo se queda el deck al terminar el cierre
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EndKind {
+    /// Teclas vacías: se ve el fondo del deck
+    Background,
+    /// El logo de Prisma
+    Logo,
+    /// Una foto elegida en el panel
+    Photo,
+    /// Pantalla apagada
+    Off,
 }
 
 impl Default for Animations {
@@ -114,6 +168,8 @@ impl Default for Animations {
             startup: Animation::new(AnimKind::None),
             shutdown: Animation::new(AnimKind::None),
             end_with_background: true,
+            end_with_logo: false,
+            ending: None,
         }
     }
 }
@@ -209,7 +265,7 @@ pub static SETTINGS: LazyLock<RwLock<AppSettings>> = LazyLock::new(|| RwLock::ne
 pub static CHANGED: LazyLock<Notify> = LazyLock::new(Notify::new);
 
 fn path() -> Option<PathBuf> {
-    Some(dirs::config_dir()?.join("mgdc").join("settings.json"))
+    Some(crate::app_dir()?.join("settings.json"))
 }
 
 fn load() -> AppSettings {

@@ -41,7 +41,7 @@ pub async fn intercept(evt: SetImageEvent) -> Option<SetImageEvent> {
 fn step(model: &Model, duration_ms: u32, n: usize) -> Duration {
     let (base, per_key) = model.anim_pacing();
     let min = base + per_key;
-    let even = duration_ms.clamp(300, 8000) as u64 / n.max(1) as u64;
+    let even = duration_ms.clamp(crate::animation::MIN_MS, crate::animation::MAX_MS) as u64 / n.max(1) as u64;
     Duration::from_millis(even.max(min))
 }
 

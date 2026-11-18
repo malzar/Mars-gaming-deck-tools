@@ -62,6 +62,7 @@ enum InboundEventType {
 	PropertyInspectorDidAppear(PropertyInspectorAppearEvent),
 	PropertyInspectorDidDisappear(PropertyInspectorAppearEvent),
 	TitleParametersDidChange(TitleParametersDidChangeEvent),
+	SendToPlugin(SendToPluginEvent),
 }
 
 /// The required return value for event handler functions. It is a ubiquitous Result type for convenience.
@@ -221,6 +222,14 @@ pub trait ActionEventHandler {
 	) -> impl Future<Output = EventHandlerResult> + Send {
 		async { Ok(()) }
 	}
+
+	fn send_to_plugin(
+		&self,
+		event: SendToPluginEvent,
+		outbound: &mut OutboundEventManager,
+	) -> impl Future<Output = EventHandlerResult> + Send {
+		async { Ok(()) }
+	}
 }
 
 pub(crate) async fn process_incoming_messages(
@@ -304,6 +313,7 @@ pub(crate) async fn process_incoming_messages(
 				InboundEventType::TitleParametersDidChange(event) => {
 					action_event_handler.title_parameters_did_change(event, outbound).await
 				}
+				InboundEventType::SendToPlugin(event) => action_event_handler.send_to_plugin(event, outbound).await,
 			} {
 				log::error!("Failed to process inbound event: {}", error)
 			}

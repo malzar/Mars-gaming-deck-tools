@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title data-i18n="prisma_hora_fecha_y">Prisma · Hora, fecha y tiempo</title>
+<style>
+  :root { color-scheme: dark; --bg: #2d2d2d; --field: #3d3d3d; --border: #4a4a4a; --text: #d8d8d8; --muted: #9a9a9a; }
+  body { margin: 0; padding: 10px 12px; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, "Segoe UI", sans-serif; }
+  .row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px; align-items: center; margin-bottom: 10px; }
+  .row > label:first-child { color: var(--muted); }
+  select, input[type=text], input[type=number] { width: 100%; box-sizing: border-box; height: 28px; padding: 0 6px; background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font: inherit; }
+  .checks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .checks label { display: flex; gap: 5px; align-items: center; }
+  .note { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
+  .hidden { display: none !important; }
+  a { color: #8ab4f8; }
+</style>
+</head>
+<body>
+  <!-- Hora -->
+  <div id="clock" class="hidden">
+    <div class="row key"><label for="style" data-i18n="estilo">Estilo</label><select id="style"><option value="digital" data-i18n="digital">Digital</option><option value="analog" data-i18n="con_agujas">Con agujas</option></select></div>
+    <div class="row key digital"><label for="part" data-i18n="que_ensena">Qué enseña</label><select id="part"><option value="full" data-i18n="la_hora_entera">La hora entera</option><option value="hours" data-i18n="solo_las_horas">Solo las horas</option><option value="minutes" data-i18n="solo_los_minutos">Solo los minutos</option></select></div>
+    <div class="row key digital full"><label></label><label><input type="checkbox" id="show_date"> <span data-i18n="el_dia_debajo">El día debajo</span></label></div>
+    <div class="row dial"><label></label><label><input type="checkbox" id="seconds"> <span data-i18n="con_segundos">Con segundos</span></label></div>
+    <div class="row key"><label for="clock_click" data-i18n="click">Click</label><select id="clock_click"></select></div>
+    <div class="row key"><label for="clock_double" data-i18n="doble_click">Doble click</label><select id="clock_double"></select></div>
+    <p class="note key" data-i18n="solo_las_horas_y">«Solo las horas» y «Solo los minutos» sirven para montar un reloj en columna con los laterales del MSD-ONE: horas arriba, minutos en medio y la fecha abajo.</p>
+  </div>
+
+  <!-- Fecha -->
+  <div id="date" class="hidden">
+    <p class="note" data-i18n="ensena_el_dia_de">Enseña el día de la semana, el día y el mes. Pulsarla no hace nada.</p>
+  </div>
+
+  <!-- Tiempo -->
+  <div id="weather" class="hidden">
+    <div class="row"><label for="city" data-i18n="ciudad">Ciudad</label><input type="text" id="city" list="cities" placeholder="La del panel de Prisma" data-i18n-ph="la_del_panel_de" autocomplete="off"></div>
+    <datalist id="cities"></datalist>
+    <p class="note" id="cityNote"></p>
+    <div class="row"><label data-i18n="vistas">Vistas</label><div class="checks" id="views"></div></div>
+    <div class="row"><label for="rotate_secs" data-i18n="cambiar_sola">Cambiar sola</label><select id="rotate_secs"><option value="0" data-i18n="no">No</option><option value="5" data-i18n="cada_5_s">Cada 5 s</option><option value="10" data-i18n="cada_10_s">Cada 10 s</option><option value="15" data-i18n="cada_15_s">Cada 15 s</option><option value="30" data-i18n="cada_30_s">Cada 30 s</option><option value="60" data-i18n="cada_minuto">Cada minuto</option></select></div>
+    <div class="row"><label for="click" data-i18n="click">Click</label><select id="click" data-k="click"></select></div>
+    <div class="row"><label for="double" data-i18n="doble_click">Doble click</label><select id="double" data-k="double"></select></div>
+    <p class="note" id="wNote"></p>
+    <p class="note" data-i18n="datos_de_open_meteo">Datos de Open-Meteo (gratis, sin cuenta), cada 15 minutos. El polen solo lo hay en Europa y en su temporada; los niveles de polen son orientativos.</p>
+    <!-- Atribución que pide la licencia CC BY 4.0 de los datos -->
+    <p class="note"><a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>). <span data-i18n="credito_fuentes">Calidad del aire y polen: Copernicus (CAMS). Localidades: GeoNames.</span></p>
+  </div>
+<script src="i18n.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let ws = null, uuid = '', action = '', settings = {}, dial = false, kind = '';
+  const DEF = { style: 'digital', part: 'full', show_date: true, seconds: true, city: '', views: [], rotate_secs: 0, click: 'next', double: 'web', clock_click: 'style', clock_double: 'none' };
+  const VIEWS = {
+    key: [['now', 'ahora'], ['forecast', 'prevision_3_dias'], ['today', 'hoy'], ['tomorrow', 'manana'], ['after', 'pasado_manana'], ['wind', 'viento'], ['uv', 'indice_uv'], ['air', 'calidad_del_aire'], ['pollen', 'polen'], ['sun', 'sol_y_luna'], ['moon', 'fase_de_la_luna']],
+    dial: [['now', 'ahora'], ['forecast', 'prevision_4_dias'], ['hours', 'por_horas'], ['wind', 'viento'], ['uv', 'indice_uv'], ['air', 'calidad_del_aire'], ['pollen', 'polen'], ['sun', 'sol_y_luna'], ['moon', 'fase_de_la_luna']],
+  };
+  // Textos por clave (locales/<idioma>.json, sección pi): se traducen al pintarlos
+  const ACTS = [['next', 'siguiente_vista'], ['web', 'abrir_la_prevision_en'], ['none', 'nada']];
+  const CLOCK_ACTS = [['style', 'cambiar_agujas_digital'], ['none', 'nada']];
+  function save() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event: 'setSettings', context: uuid, action, payload: settings })); }
+  function send(payload) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event: 'sendToPlugin', context: uuid, action, payload })); }
+  ['click', 'double', 'clock_click', 'clock_double'].forEach((k) => { $(k).onchange = () => { settings[k] = $(k).value; save(); }; });
+  $('style').onchange = () => { settings.style = $('style').value; show(); save(); };
+  $('part').onchange = () => { settings.part = $('part').value; show(); save(); };
+  $('show_date').onchange = () => { settings.show_date = $('show_date').checked; save(); };
+  $('seconds').onchange = () => { settings.seconds = $('seconds').checked; save(); };
+  $('rotate_secs').onchange = () => { settings.rotate_secs = +$('rotate_secs').value; save(); };
+  // Buscar la localidad: lo que se escribe se manda al plugin, que pregunta a
+  // Open-Meteo; las respuestas salen en la lista del campo
+  let found = [], searchTimer = null;
+  const label = (p) => p.region ? `${p.name}, ${p.region}` : p.name;
+  $('city').oninput = () => {
+    clearTimeout(searchTimer);
+    const q = $('city').value.trim();
+    if (q.length < 2 || found.some((p) => label(p) === q)) return;
+    searchTimer = setTimeout(() => send({ request: 'places', q }), 350);
+  };
+  $('city').onchange = () => {
+    const v = $('city').value.trim();
+    const p = found.find((x) => label(x) === v) || found.find((x) => x.name.toLowerCase() === v.toLowerCase());
+    if (!v) { settings.city = ''; delete settings.region; delete settings.lat; delete settings.lon; }
+    else if (p) { settings.city = p.name; settings.region = p.region; settings.lat = p.lat; settings.lon = p.lon; $('city').value = label(p); }
+    else { $('cityNote').textContent = T('busca_localidad'); return; }
+    show(); save();
+  };
+  function places(list, q) {
+    if ($('city').value.trim() !== q) return;
+    found = list;
+    $('cities').innerHTML = list.map((p) => `<option value="${label(p).replace(/"/g, '&quot;')}">`).join('');
+    $('cityNote').textContent = list.length ? '' : T('sin_resultados');
+  }
+  function show() {
+    const s = Object.assign({}, DEF, settings);
+    ['clock', 'date', 'weather'].forEach((k) => $(k).classList.toggle('hidden', k !== kind));
+    document.querySelectorAll('.key').forEach((e) => e.classList.toggle('hidden', dial));
+    document.querySelectorAll('.dial').forEach((e) => e.classList.toggle('hidden', !dial));
+    document.querySelectorAll('.digital').forEach((e) => e.classList.toggle('hidden', dial || s.style !== 'digital'));
+    document.querySelectorAll('.full').forEach((e) => e.classList.toggle('hidden', dial || s.style !== 'digital' || s.part !== 'full'));
+    $('style').value = s.style; $('part').value = s.part; $('show_date').checked = s.show_date; $('seconds').checked = s.seconds;
+    ['click', 'double'].forEach((k) => { $(k).innerHTML = ACTS.map(([v, key]) => `<option value="${v}">${T(key)}</option>`).join(''); });
+    ['clock_click', 'clock_double'].forEach((k) => { $(k).innerHTML = CLOCK_ACTS.map(([v, key]) => `<option value="${v}">${T(key)}</option>`).join(''); $(k).value = s[k]; });
+    $('city').value = s.city ? (s.region ? `${s.city}, ${s.region}` : s.city) : ''; $('rotate_secs').value = String(s.rotate_secs); $('click').value = s.click; $('double').value = s.double;
+    $('cityNote').textContent = s.city ? '' : T('vacio_la_ciudad_del');
+    const list = VIEWS[dial ? 'dial' : 'key'], on = s.views.length ? s.views : ['now'];
+    $('views').innerHTML = list.map(([v, key]) => `<label><input type="checkbox" value="${v}" ${on.includes(v) ? 'checked' : ''}> ${T(key)}</label>`).join('');
+    $('views').querySelectorAll('input').forEach((c) => c.onchange = () => {
+      settings.views = [...$('views').querySelectorAll('input:checked')].map((x) => x.value);
+      save();
+    });
+    $('wNote').textContent = dial
+      ? T('con_varias_vistas_girar')
+      : T('con_varias_vistas_siguiente');
+  }
+  window.connectElgatoStreamDeckSocket = (port, inUuid, registerEvent, info, actionInfo) => {
+    window.prismaLang(info);
+    uuid = inUuid;
+    const ai = typeof actionInfo === 'string' ? JSON.parse(actionInfo) : actionInfo;
+    action = ai.action;
+    kind = { 'com.malzar.prisma.w.clock': 'clock', 'com.malzar.prisma.w.date': 'date', 'com.malzar.prisma.w.weather': 'weather' }[action] || '';
+    dial = (ai.payload && ai.payload.controller) === 'Encoder';
+    settings = Object.assign({}, ai.payload && ai.payload.settings);
+    show();
+    ws = new WebSocket('ws://127.0.0.1:' + port);
+    ws.onopen = () => { ws.send(JSON.stringify({ event: registerEvent, uuid })); };
+    ws.onmessage = (m) => {
+      const msg = JSON.parse(m.data);
+      if (msg.event === 'didReceiveSettings' && msg.payload) { settings = Object.assign({}, msg.payload.settings); show(); }
+      if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.places) places(msg.payload.places, msg.payload.q);
+      if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.placesError) $('cityNote').textContent = msg.payload.placesError;
+    };
+  };
+</script>
+</body>
+</html>

@@ -49,6 +49,59 @@ async fn spawn_device(candidate: CandidateDevice) {
     tracker.spawn(device_task(candidate, token));
 }
 
+/// Decks que se están volviendo a conectar tras un error: no repiten la animación de arranque
+static QUIET: std::sync::LazyLock<std::sync::Mutex<Vec<String>>> = std::sync::LazyLock::new(Default::default);
+
+/// Si este arranque es una reconexión tras un error (y lo olvida)
+pub fn take_reconnected(id: &str) -> bool {
+    let mut q = QUIET.lock().unwrap();
+    let was = q.iter().any(|x| x == id);
+    q.retain(|x| x != id);
+    was
+}
+
+/// Vuelve a conectar un deck que ha dado un error, si sigue enchufado.
+/// Como mucho 5 veces cada 2 minutos, para no entrar en bucle si el deck falla.
+/// (Va en una caja: la tarea del deck la llama y este a su vez la lanza)
+pub fn reconnect(id: String) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+    Box::pin(reconnect_inner(id))
+}
+
+async fn reconnect_inner(id: String) {
+    use std::time::{Duration, Instant};
+    static TRIES: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, Vec<Instant>>>> =
+        std::sync::LazyLock::new(Default::default);
+    {
+        let mut t = TRIES.lock().unwrap();
+        let v = t.entry(id.clone()).or_default();
+        v.retain(|at| at.elapsed() < Duration::from_secs(120));
+        if v.len() >= 5 {
+            log::error!("{id} ha fallado demasiadas veces seguidas: no se vuelve a conectar");
+            return;
+        }
+        v.push(Instant::now());
+    }
+    for attempt in 1..=5u64 {
+        // Margen para que terminen las tareas del deck y se libere el USB
+        tokio::time::sleep(Duration::from_millis(1500 * attempt)).await;
+        if crate::CLOSING.load(std::sync::atomic::Ordering::SeqCst) || DEVICES.read().await.contains_key(&id) {
+            return;
+        }
+        match get_candidates().await {
+            Ok(list) => {
+                if let Some(candidate) = list.into_iter().find(|c| c.id == id) {
+                    log::info!("Volviendo a conectar {id} (intento {attempt})");
+                    QUIET.lock().unwrap().push(id.clone());
+                    spawn_device(candidate).await;
+                    return;
+                }
+            }
+            Err(e) => log::warn!("No se pudieron buscar decks: {e}"),
+        }
+    }
+    log::warn!("{id} no aparece: se conectará cuando se vuelva a enchufar");
+}
+
 pub async fn watcher_task(token: CancellationToken) -> Result<(), MirajazzError> {
     for candidate in get_candidates().await? {
         log::info!("New candidate {:#?}", candidate);

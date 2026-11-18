@@ -1,4 +1,4 @@
-//! Familias de dispositivos que maneja MGDC.
+//! Familias de dispositivos que maneja Prisma.
 //!
 //! - `akp153`: 15 teclas + 3 iconos laterales, sin ruedas (MSD-ONE).
 //! - `akp05`: 10 teclas, 4 ruedas y tira táctil, tipo Stream Deck+ (MSD-PRO).
@@ -40,6 +40,9 @@ pub struct Layout {
     pub cols: u8,
     pub keys: usize,
     pub encoders: usize,
+    /// Filas de teclas virtuales que solo existen en OpenDeck (debajo de las de
+    /// verdad): las de cambiar de perfil con la rueda
+    pub virtual_rows: u8,
     pub device_type: u8,
 }
 
@@ -71,6 +74,7 @@ impl Model {
                 cols: akp153::COL_COUNT as u8,
                 keys: akp153::KEY_COUNT,
                 encoders: akp153::ENCODER_COUNT,
+                virtual_rows: crate::profiles::VIRTUAL_ROWS,
                 device_type: 0,
             },
             Model::Akp05(_) => Layout {
@@ -78,6 +82,7 @@ impl Model {
                 cols: akp05::COL_COUNT as u8,
                 keys: akp05::KEY_COUNT,
                 encoders: akp05::ENCODER_COUNT,
+                virtual_rows: crate::profiles::VIRTUAL_ROWS,
                 device_type: akp05::DEVICE_TYPE,
             },
         }
@@ -97,19 +102,27 @@ impl Model {
         !matches!(self, Model::Akp153(k) if k.protocol_version() == 1)
     }
 
-    /// Tipos de animación que admite este deck. El MSD-ONE solo aguanta la
-    /// cascada de iconos (una tecla cada vez, a su ritmo).
+    /// Tipos de animación que admite este deck. El MSD-ONE solo aguanta las
+    /// que cambian pocas teclas cada vez, a su ritmo (cascada, lineal, flecha,
+    /// filas y aleatorio).
     pub fn anim_kinds(&self) -> &'static [&'static str] {
         if self.supports_animations() {
-            &["none", "cascade", "wave", "keys", "fade", "gif"]
+            &[
+                "none", "chase", "arrow", "random", "snake", "bounce", "meet", "rain", "windmill",
+                "cross", "swing", "wave", "keys", "fade", "gif",
+            ]
         } else {
-            &["none", "cascade"]
+            &[
+                "none", "chase", "arrow", "random", "snake", "bounce", "meet", "rain", "windmill",
+                "cross", "swing",
+            ]
         }
     }
 
+    /// La animación está en la lista de este deck (las retiradas no lo están)
     pub fn allows_animation(&self, kind: &crate::settings::AnimKind) -> bool {
-        use crate::settings::AnimKind;
-        matches!(kind, AnimKind::None | AnimKind::Cascade) || self.supports_animations()
+        let name = serde_json::to_value(kind).ok().and_then(|v| v.as_str().map(str::to_string));
+        name.is_some_and(|n| self.anim_kinds().contains(&n.as_str()))
     }
 
     /// Borra una tecla (o un trozo de la pantalla de las ruedas) sin enviarlo todavía
@@ -118,6 +131,13 @@ impl Model {
             Model::Akp153(_) => device.clear_button_image(akp153::opendeck_to_device(position)).await,
             Model::Akp05(_) => device.clear_button_image(akp05::map_position(position, encoder)?).await,
         }
+    }
+
+    /// Teclas que se cambian como mucho en cada envío durante una animación.
+    /// Con más de 4 a la vez el MSD-ONE se ralentiza: si un paso cambia más,
+    /// se reparte en varios envíos seguidos.
+    pub fn max_changes_per_send(&self) -> usize {
+        if self.supports_animations() { usize::MAX } else { 4 }
     }
 
     /// Ritmo de las animaciones: (pausa mínima tras cada envío, ms extra por
@@ -160,7 +180,9 @@ impl Model {
         }
     }
 
-    /// Pinta la imagen de prueba de calibración en una zona (sin enviarla)
+    /// Pinta la imagen de prueba de calibración en una zona (sin enviarla).
+    /// Las pantallas de las otras zonas se quedan en negro, para ver solo la
+    /// zona que se está calibrando. Con `zone` vacío se pintan todas.
     pub async fn draw_calibration(
         &self,
         device: &Device,
@@ -168,46 +190,111 @@ impl Model {
         cal: &crate::settings::Calibration,
     ) -> Result<usize, MirajazzError> {
         use crate::calibration::{apply_sized, is_side, test_pattern_sized};
+        let show = |z: &str| zone.is_empty() || zone == z;
         let mut sent = 0;
         match self {
             Model::Akp153(_) => {
                 let (rows, cols) = self.grid();
                 for pos in 0..rows * cols {
                     let side = is_side(pos);
-                    if (zone == "keys" && side) || (zone == "side" && !side) {
-                        continue;
+                    if !show(if side { "side" } else { "keys" }) {
+                        self.clear_key(device, pos, false).await?;
+                    } else {
+                        let size = if self.protocol_version() == 1 {
+                            (85, 85)
+                        } else if side {
+                            (82, 82)
+                        } else {
+                            (95, 95)
+                        };
+                        let adj = if side { cal.side } else { cal.keys };
+                        let img = apply_sized(test_pattern_sized(size.0, size.1), adj, size);
+                        self.draw_key(device, pos, img).await?;
                     }
-                    let size = if side { (82, 82) } else { (95, 95) };
-                    let size = if self.protocol_version() == 1 { (85, 85) } else { size };
-                    let adj = if side { cal.side } else { cal.keys };
-                    let img = apply_sized(test_pattern_sized(size.0, size.1), adj, size);
-                    self.draw_key(device, pos, img).await?;
                     sent += 1;
                 }
             }
             Model::Akp05(k) => {
-                if zone != "strip" {
-                    let s = self.key_size();
-                    let img = apply_sized(test_pattern_sized(s, s), cal.keys, (s, s));
-                    for pos in 0..akp05::KEY_COUNT as u8 {
-                        self.draw_key(device, pos, img.clone()).await?;
-                        sent += 1;
+                let (rows, cols) = self.grid();
+                let s = self.key_size();
+                let key_img = apply_sized(test_pattern_sized(s, s), cal.keys, (s, s));
+                for pos in 0..rows * cols {
+                    if show("keys") {
+                        self.draw_key(device, pos, key_img.clone()).await?;
+                    } else {
+                        self.clear_key(device, pos, false).await?;
                     }
+                    sent += 1;
                 }
-                if zone != "keys" {
-                    let f = k.touch_image_format();
-                    let size = (f.size.0 as u32, f.size.1 as u32);
-                    let img = apply_sized(test_pattern_sized(size.0, size.1), cal.strip, size);
-                    for enc in 0..akp05::ENCODER_COUNT as u8 {
+                let f = k.touch_image_format();
+                let size = (f.size.0 as u32, f.size.1 as u32);
+                let strip_img = apply_sized(test_pattern_sized(size.0, size.1), cal.strip, size);
+                for enc in 0..akp05::ENCODER_COUNT as u8 {
+                    if show("strip") {
                         device
-                            .set_button_image(akp05::map_position(enc, true)?, f.clone(), img.clone())
+                            .set_button_image(akp05::map_position(enc, true)?, f, strip_img.clone())
                             .await?;
-                        sent += 1;
+                    } else {
+                        self.clear_key(device, enc, true).await?;
                     }
+                    sent += 1;
                 }
             }
         }
         Ok(sent)
+    }
+
+    /// Aplica la calibración guardada a una imagen antes de pintarla.
+    /// `encoder` = es un trozo de la pantalla de las ruedas (MSD-PRO).
+    pub fn calibrate(
+        &self,
+        cal: &crate::settings::Calibration,
+        position: u8,
+        encoder: bool,
+        image: image::DynamicImage,
+    ) -> image::DynamicImage {
+        use crate::calibration::{adjust_for, apply_sized};
+        match self {
+            Model::Akp153(k) => {
+                let f = akp153::get_image_format_for_key(k, position);
+                apply_sized(image, adjust_for(cal, position), (f.size.0 as u32, f.size.1 as u32))
+            }
+            Model::Akp05(k) if encoder => {
+                let f = k.touch_image_format();
+                apply_sized(image, cal.strip, (f.size.0 as u32, f.size.1 as u32))
+            }
+            Model::Akp05(_) => {
+                let s = self.key_size();
+                apply_sized(image, cal.keys, (s, s))
+            }
+        }
+    }
+
+    /// Pantallas de debajo de las ruedas (MSD-PRO); 0 si el deck no tiene
+    pub fn strip_zones(&self) -> u8 {
+        match self {
+            Model::Akp05(_) => akp05::ENCODER_COUNT as u8,
+            Model::Akp153(_) => 0,
+        }
+    }
+
+    /// Tamaño de la imagen de cada pantalla de rueda (0×0 si no hay)
+    pub fn strip_size(&self) -> (u32, u32) {
+        match self {
+            Model::Akp05(k) => {
+                let s = k.touch_image_format().size;
+                (s.0 as u32, s.1 as u32)
+            }
+            Model::Akp153(_) => (0, 0),
+        }
+    }
+
+    /// Pinta la pantalla de una rueda sin enviarla todavía
+    pub async fn draw_strip(&self, device: &Device, zone: u8, image: image::DynamicImage) -> Result<(), MirajazzError> {
+        match self {
+            Model::Akp05(k) => device.set_button_image(akp05::map_position(zone, true)?, k.touch_image_format(), image).await,
+            Model::Akp153(_) => Ok(()),
+        }
     }
 
     /// Pinta una tecla sin enviarla todavía (hay que llamar a `device.flush()`)
@@ -289,6 +376,9 @@ impl Model {
 
 /// Pinta una imagen en el dispositivo según su familia
 pub async fn set_image(device: &Device, id: &str, evt: SetImageEvent) -> Result<(), MirajazzError> {
+    if let Some(pos) = evt.position {
+        crate::animation::painted(id, evt.controller.as_deref() == Some("Encoder"), pos);
+    }
     match Model::from_vid_pid(device.vid, device.pid) {
         Some(Model::Akp153(_)) => akp153::set_image(device, id, evt).await,
         Some(Model::Akp05(_)) => akp05::set_image(device, id, evt).await,
