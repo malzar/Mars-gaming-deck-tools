@@ -86,6 +86,8 @@ pub struct DialView<'a> {
     pub eq_color: &'a str,
     /// Silenciado: sin barra ni ecualizador, con el símbolo de silencio
     pub muted: bool,
+    /// Dibujo de fondo, tenue (la salida de audio que suena)
+    pub background: &'a str,
 }
 
 /// Altavoz tachado (silencio) de `h` de alto con la esquina en x, y
@@ -103,7 +105,7 @@ fn mute_icon(x: f32, y: f32, h: f32, color: &str) -> String {
 
 pub fn render_dial(v: &DialView, f: &Frame) -> String {
     let style = v.style;
-    let mut body = String::new();
+    let mut body = v.background.to_string();
     if style == DialStyle::EqBackground && !v.muted {
         body += &eq_bars(&f.eq, EqArea { bars: 12, x: 0.0, w: 200.0, bottom: 100.0, max_h: 70.0 }, v.eq_color, 0.28);
     }
@@ -217,6 +219,7 @@ fn muestras_rueda() {
         style,
         eq_color: "#2ecc71",
         muted: false,
+        background: "",
     };
     let m = |style, title: &'static str| DialView { muted: true, value: "Silencio", fill: 0.0, ..v(style, title, if title.is_empty() { "" } else { "Queen" }) };
     let s = [

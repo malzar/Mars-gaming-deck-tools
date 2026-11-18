@@ -151,7 +151,9 @@
     "wind.light": "Light",
     "wind.moderate": "Moderate",
     "wind.strong": "Strong",
-    "wind.very_strong": "Very strong"
+    "wind.very_strong": "Very strong",
+    "audio.output_head": "Audio output · {} / {}",
+    "audio.output_done": "Click to finish"
   },
   "pi": {
     "click": "Click",
@@ -199,7 +201,7 @@
     "ecualizador_en_lugar_de": "Equalizer instead of the bar",
     "en_el_msd_one": "On the MSD-ONE there's no GIF and anything that moves runs at half the frames: the deck handles few changes per second.",
     "manda_la_orden_al": "Sends the command to the player; the title comes from its window's name (YouTube, Spotify, VLC).",
-    "gira_para_cambiar_el": "Turn to change the volume; press the dial or tap the screen to mute.",
+    "gira_para_cambiar_el": "Turn to change the volume; press the dial or tap the screen to mute. Double-click to change the audio output (speakers, headphones…): turn to switch between them and press to finish.",
     "prisma_entrar_cambiar_perfil": "Prisma · Open / switch profile",
     "perfil": "Profile",
     "el_elegido_con_la": "The one chosen with the dial",
@@ -304,14 +306,13 @@
     "t_snd_system": "Windows sound",
     "t_snd_own": "Your sound",
     "t_snd_pick": "Choose a WAV…",
-    "sw_title": "Touch screen (MSD-PRO)",
+    "sw_title": "Touch screen",
     "sw_mode": "Swipe",
     "sw_off": "Does nothing",
     "sw_same": "Same as turning",
     "sw_other": "Something else",
     "sw_action": "On swipe ← / →",
     "sw_track": "Previous / next track",
-    "sw_volume": "Lower / raise system volume",
     "sw_invert": "Reverse direction",
     "sw_note_off": "Tapping this dial’s zone responds right away.",
     "sw_note_on": "Tap this dial’s zone, release and swipe at a normal speed. If the gesture isn’t detected well, adjust the swipe time in the Prisma panel (Screen tab)."

@@ -2,9 +2,9 @@
 // deslizar por la pantalla tras tocar la zona de la rueda (ver gestures.rs).
 // Cada ventana lo monta al conectarse y lo refresca cuando le llegan ajustes.
 // Guarda en los ajustes de la acción: swipe ("off" | "same" | "other"),
-// swipe_action ("track" | "volume") y swipe_invert.
+// swipe_action ("track"; más adelante habrá más) y swipe_invert.
 window.PrismaSwipe = (function () {
-  const ACTIONS = ['track', 'volume'];
+  const ACTIONS = ['track'];
   let get = null, save = null, box = null;
 
   const row = (label, control) => `<div class="row"><label>${label}</label>${control}</div>`;
@@ -32,7 +32,7 @@ window.PrismaSwipe = (function () {
     box.innerHTML =
       `<p class="note" style="border-top:1px solid var(--border);padding-top:8px;margin-top:12px">${T('sw_title')}</p>` +
       row(T('sw_mode'), `<select id="swipe">${opt('off', 'sw_off')}${opt('same', 'sw_same')}${opt('other', 'sw_other')}</select>`) +
-      `<div id="swipeActRow">${row(T('sw_action'), `<select id="swipe_action">${opt('track', 'sw_track')}${opt('volume', 'sw_volume')}</select>`)}</div>` +
+      `<div id="swipeActRow">${row(T('sw_action'), `<select id="swipe_action">${opt('track', 'sw_track')}</select>`)}</div>` +
       `<div id="swipeInvRow">${row('', `<label><input type="checkbox" id="swipe_invert"> ${T('sw_invert')}</label>`)}</div>` +
       `<p class="note" id="swipeNote"></p>`;
     document.body.appendChild(box);

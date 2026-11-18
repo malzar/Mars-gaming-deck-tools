@@ -21,7 +21,7 @@ pub(super) fn text_width(s: &str, size: f32, bold: bool) -> f32 {
 }
 
 /// Recorta con "…" hasta que quepa en `max` de ancho
-pub(super) fn fit(s: &str, size: f32, bold: bool, max: f32) -> String {
+pub fn fit(s: &str, size: f32, bold: bool, max: f32) -> String {
     let s = s.trim();
     if text_width(s, size, bold) <= max {
         return s.to_string();

@@ -147,6 +147,7 @@ pub(super) fn render_dial_frame(s: &ActSettings, level: Option<Level>, np: Optio
             style: crate::player::DialStyle::from_id(&s.dial_style),
             eq_color: &s.bar_color,
             muted: level.is_some_and(|l| l.muted),
+            background: &super::outputs::background(),
         },
         f,
     )

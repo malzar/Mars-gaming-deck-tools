@@ -107,6 +107,13 @@ pub(super) async fn refresh(context: &str) {
         Some(i) => (i.kind, i.settings.clone()),
         None => return,
     };
+    if kind == Kind::Dial {
+        // Eligiendo salida: no se pinta encima
+        if super::outputs::is_choosing(context).await {
+            return;
+        }
+        super::outputs::update_current().await;
+    }
     let level = if kind.uses_level() { level_of(&settings.target).await } else { None };
     let np = if kind == Kind::PlayPause || (kind == Kind::Dial && settings.show_title) { now_playing().await } else { None };
     let svg = render_key(kind, &settings, level, np.as_ref(), None);

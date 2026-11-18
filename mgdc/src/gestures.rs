@@ -61,8 +61,6 @@ pub enum Swipe {
     Rotate,
     /// Pista anterior / siguiente
     Track,
-    /// Volumen general − / +
-    Volume,
 }
 
 /// Lo elegido en una rueda: qué hace y si va al revés
@@ -78,10 +76,7 @@ impl SwipeCfg {
     pub fn from_settings(v: &Value) -> Option<Self> {
         let what = match v["swipe"].as_str()? {
             "same" => Swipe::Rotate,
-            "other" => match v["swipe_action"].as_str().unwrap_or("track") {
-                "volume" => Swipe::Volume,
-                _ => Swipe::Track,
-            },
+            "other" => Swipe::Track,
             _ => return None,
         };
         Some(Self { what, invert: v["swipe_invert"].as_bool().unwrap_or(false) })
@@ -199,8 +194,8 @@ mod tests {
         assert_eq!(SwipeCfg::from_settings(&json!({"swipe": "off"})), None);
         let same = SwipeCfg::from_settings(&json!({"swipe": "same"})).unwrap();
         assert_eq!((same.what, same.ticks(1), same.ticks(-1)), (Swipe::Rotate, 1, -1));
-        let vol = SwipeCfg::from_settings(&json!({"swipe": "other", "swipe_action": "volume", "swipe_invert": true})).unwrap();
-        assert_eq!((vol.what, vol.ticks(1)), (Swipe::Volume, -1));
+        let inv = SwipeCfg::from_settings(&json!({"swipe": "same", "swipe_invert": true})).unwrap();
+        assert_eq!(inv.ticks(1), -1);
         assert_eq!(SwipeCfg::from_settings(&json!({"swipe": "other"})).unwrap().what, Swipe::Track);
     }
 

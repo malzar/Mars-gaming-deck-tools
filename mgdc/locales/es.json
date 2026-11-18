@@ -151,7 +151,9 @@
     "wind.light": "Flojo",
     "wind.moderate": "Moderado",
     "wind.strong": "Fuerte",
-    "wind.very_strong": "Muy fuerte"
+    "wind.very_strong": "Muy fuerte",
+    "audio.output_head": "Salida de audio · {} / {}",
+    "audio.output_done": "Click para terminar"
   },
   "pi": {
     "click": "Click",
@@ -199,7 +201,7 @@
     "ecualizador_en_lugar_de": "Ecualizador en lugar de la barra",
     "en_el_msd_one": "En el MSD-ONE no hay GIF y lo que se mueve va a la mitad de fotogramas: el deck aguanta pocos cambios por segundo.",
     "manda_la_orden_al": "Manda la orden al reproductor; el título sale del nombre de su ventana (YouTube, Spotify, VLC).",
-    "gira_para_cambiar_el": "Gira para cambiar el volumen; pulsa la rueda o toca la pantalla para silenciar.",
+    "gira_para_cambiar_el": "Gira para cambiar el volumen; pulsa la rueda o toca la pantalla para silenciar. Doble click para cambiar la salida de audio (altavoces, auriculares…): gira para pasar de una a otra y pulsa para terminar.",
     "prisma_entrar_cambiar_perfil": "Prisma · Entrar / cambiar perfil",
     "perfil": "Perfil",
     "el_elegido_con_la": "El elegido con la rueda",
@@ -304,14 +306,13 @@
     "t_snd_system": "Sonido de Windows",
     "t_snd_own": "Tu sonido",
     "t_snd_pick": "Elegir un WAV…",
-    "sw_title": "Pantalla táctil (MSD-PRO)",
+    "sw_title": "Pantalla táctil",
     "sw_mode": "Deslizar",
     "sw_off": "No hace nada",
     "sw_same": "Igual que girar",
     "sw_other": "Otra cosa",
     "sw_action": "Al deslizar ← / →",
     "sw_track": "Pista anterior / siguiente",
-    "sw_volume": "Bajar / subir volumen general",
     "sw_invert": "Invertir dirección",
     "sw_note_off": "Tocar la zona de esta rueda responde al momento.",
     "sw_note_on": "Toca la zona de esta rueda, suelta y desliza a velocidad normal. Si no detecta bien el gesto, ajusta el tiempo para deslizar en el panel de Prisma (pestaña Pantalla)."

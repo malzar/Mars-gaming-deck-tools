@@ -38,6 +38,31 @@ pub struct NowPlaying {
     pub process: String,
 }
 
+/// Qué es una salida de audio (para su dibujo)
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[cfg_attr(not(windows), allow(dead_code))] // fuera de Windows no hay salidas
+pub enum OutputKind {
+    #[default]
+    Speakers,
+    Headphones,
+    /// Cascos con micrófono
+    Headset,
+    /// Monitor o tele (HDMI, DisplayPort)
+    Display,
+    /// Salida digital (S/PDIF, óptica)
+    Digital,
+}
+
+/// Una salida de audio de Windows (altavoces, auriculares…)
+#[derive(Debug, Clone, PartialEq)]
+pub struct Output {
+    pub id: String,
+    pub name: String,
+    pub kind: OutputKind,
+    /// Si es la que usa Windows ahora
+    pub default: bool,
+}
+
 /// Volumen de 0 a 100 y si está silenciado
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Level {

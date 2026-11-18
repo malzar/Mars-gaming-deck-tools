@@ -25,6 +25,7 @@ pub use dial::{DialStyle, DialView, dial_needs_marquee, render_dial};
 pub use eq::next_eq;
 pub use gif::{gif_frame, save_gif};
 pub use key::{moving, render};
+pub use text::fit;
 
 /// Barra de abajo mientras suena
 #[derive(Debug, Clone, Copy, PartialEq)]

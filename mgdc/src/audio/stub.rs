@@ -1,7 +1,17 @@
 //! Fuera de Windows no hay audio que controlar: todo devuelve "nada".
 
-use super::{Level, NowPlaying};
+use super::{Level, NowPlaying, Output, OutputKind};
 
+pub fn outputs() -> Vec<Output> {
+    vec![]
+}
+pub fn set_default_output(_id: &str) -> Result<(), String> {
+    Err("solo en Windows".into())
+}
+pub fn default_output_kind() -> Option<OutputKind> {
+    None
+}
+pub fn forget_devices() {}
 pub fn apps() -> Vec<String> {
     vec![]
 }

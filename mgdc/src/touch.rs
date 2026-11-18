@@ -10,9 +10,6 @@ use crate::{
     gestures::{self, Swipe, WINDOW_MAX, WINDOW_MIN},
 };
 
-/// Volumen general que cambia cada deslizamiento
-const VOLUME_STEP: i32 = 2;
-
 async fn window(device: &str) -> Duration {
     let ms = crate::settings::for_device(device).await.swipe_window_ms.clamp(WINDOW_MIN, WINDOW_MAX);
     Duration::from_millis(ms as u64)
@@ -62,9 +59,6 @@ pub async fn swipe(outbound: &mut OutboundEventManager, device: &str, dir: i8) {
         Swipe::Track => {
             let key = if ticks > 0 { MediaKey::Next } else { MediaKey::Prev };
             tokio::task::spawn_blocking(move || crate::media::send(key));
-        }
-        Swipe::Volume => {
-            tokio::task::spawn_blocking(move || crate::audio::change_volume("general", ticks as i32 * VOLUME_STEP));
         }
     }
 }

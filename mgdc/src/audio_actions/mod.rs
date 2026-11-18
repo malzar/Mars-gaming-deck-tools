@@ -5,10 +5,12 @@
 //! - `state`: lo que hay en cada tecla, el último volumen y lo que suena
 //! - `render`: los dibujos (SVG) de las teclas y de las ruedas
 //! - `input`: pulsar, girar y pulsar la rueda
+//! - `outputs`: elegir la salida de audio desde la rueda (doble click)
 //! - `tasks`: repintar lo que cambia por fuera y mover el reproductor
 //! - `worker`: los hilos que hablan con Windows
 
 mod input;
+mod outputs;
 mod render;
 mod settings;
 mod state;
@@ -22,6 +24,7 @@ use crate::{
     actions::{ActionGroup, Fut},
     audio,
     canvas,
+    clicks::Clicks,
 };
 use settings::{ActSettings, is_small, settings_of};
 use state::{INSTANCES, Instance, refresh};
@@ -29,6 +32,9 @@ use state::{INSTANCES, Instance, refresh};
 pub use tasks::{player_task, poll_task};
 
 pub const PREFIX: &str = "com.malzar.prisma.audio.";
+
+/// Click o doble click de las ruedas de volumen
+static CLICKS: Clicks = Clicks::new();
 
 /// Qué hace cada acción (la parte final de su UUID)
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -95,6 +101,8 @@ impl ActionGroup for Audio {
     fn disappear<'a>(&'a self, event: &'a AppearEvent) -> Fut<'a> {
         Box::pin(async move {
             INSTANCES.lock().await.remove(&event.context);
+            outputs::forget(&event.context).await;
+            CLICKS.forget(&event.context).await;
         })
     }
 
@@ -123,14 +131,32 @@ impl ActionGroup for Audio {
     fn dial_rotate<'a>(&'a self, event: &'a DialRotateEvent) -> Fut<'a> {
         Box::pin(async move {
             log::debug!("Audio: rueda {} ({} pasos)", event.action, event.payload.ticks);
-            tokio::spawn(input::rotate(event.context.clone(), ActSettings::from_value(&event.payload.settings), event.payload.ticks));
+            let (context, s, ticks) = (event.context.clone(), ActSettings::from_value(&event.payload.settings), event.payload.ticks);
+            tokio::spawn(async move {
+                // Eligiendo salida: girar pasa por las salidas
+                if !outputs::rotate(&context, ticks).await {
+                    input::rotate(context, s, ticks).await;
+                }
+            });
         })
     }
 
     fn dial_down<'a>(&'a self, event: &'a DialPressEvent) -> Fut<'a> {
         Box::pin(async move {
             log::info!("Audio: rueda pulsada {}", event.action);
-            tokio::spawn(input::dial_mute(event.context.clone(), ActSettings::from_value(&event.payload.settings)));
+            let (context, s) = (event.context.clone(), ActSettings::from_value(&event.payload.settings));
+            tokio::spawn(async move {
+                // Eligiendo salida: el click deja puesta la que se ve
+                if outputs::confirm(&context).await {
+                    return;
+                }
+                // Click silencia; doble click entra a elegir salida
+                match CLICKS.press(&context, true).await {
+                    Some(true) => outputs::start(context).await,
+                    Some(false) => input::dial_mute(context, s).await,
+                    None => {}
+                }
+            });
         })
     }
 
