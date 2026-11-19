@@ -19,12 +19,14 @@ mod dial;
 mod eq;
 mod gif;
 mod key;
+mod music;
 mod text;
 
 pub use dial::{DialStyle, DialView, dial_needs_marquee, render_dial};
 pub use eq::next_eq;
 pub use gif::{gif_frame, save_gif};
 pub use key::{moving, render};
+pub use music::{IconPlace, MusicView, Pixels, music_moving, render_music_dial, render_music_skip};
 pub use text::fit;
 
 /// Barra de abajo mientras suena

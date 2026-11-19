@@ -96,6 +96,7 @@ pub(super) fn render_key(kind: Kind, s: &ActSettings, level: Option<Level>, np: 
             key_svg(&format!("{SPEAKER}{extra}"), &caption_level(level))
         }
         Kind::Dial => render_dial(s, level, np, None),
+        Kind::Music => render_music(s, np, &crate::player::Frame::still()),
     }
 }
 
@@ -103,6 +104,24 @@ pub(super) fn render_key(kind: Kind, s: &ActSettings, level: Option<Level>, np: 
 /// durante la animación (si no, el real).
 pub(super) fn render_dial(s: &ActSettings, level: Option<Level>, np: Option<&NowPlaying>, shown: Option<u8>) -> String {
     render_dial_frame(s, level, np, shown, &crate::player::Frame::still())
+}
+
+/// Lo que pinta la rueda de música
+pub(super) fn music_view<'a>(s: &'a ActSettings, np: Option<&'a NowPlaying>) -> crate::player::MusicView<'a> {
+    crate::player::MusicView {
+        title: np.map_or("", |n| n.title.as_str()),
+        artist: np.map_or("", |n| n.artist.as_str()),
+        playing: np.is_some_and(|n| n.playing),
+        style: crate::player::DialStyle::from_id(&s.dial_style),
+        eq_color: &s.bar_color,
+        icon: np.and_then(|n| super::app_icons::get(&n.process)),
+        icon_place: crate::player::IconPlace::from_id(&s.app_icon),
+        icon_right: s.app_icon_side == "right",
+    }
+}
+
+pub(super) fn render_music(s: &ActSettings, np: Option<&NowPlaying>, f: &crate::player::Frame) -> String {
+    crate::player::render_music_dial(&music_view(s, np), f)
 }
 
 /// Título y artista que se ven en la rueda (solo en el volumen general)
@@ -163,7 +182,7 @@ mod tests {
         let s = ActSettings::default();
         let np = NowPlaying { title: "Bohemian <Rhapsody> & más".into(), artist: "Queen".into(), playing: true, ..Default::default() };
         let lvl = Some(Level { volume: 64, muted: false });
-        for k in [Kind::PlayPause, Kind::Stop, Kind::Next, Kind::Prev, Kind::VolUp, Kind::VolDown, Kind::Mute, Kind::Dial] {
+        for k in [Kind::PlayPause, Kind::Stop, Kind::Next, Kind::Prev, Kind::VolUp, Kind::VolDown, Kind::Mute, Kind::Dial, Kind::Music] {
             for f in [None, Some(0), Some(3)] {
                 let svg = render_key(k, &s, lvl, Some(&np), f);
                 assert!(svg.starts_with("<svg") && svg.ends_with("</svg>"));
@@ -176,6 +195,7 @@ mod tests {
         let muted = render_dial(&s, Some(Level { volume: 10, muted: true }), None, None);
         assert!(muted.contains("SILENCIO") && muted.contains("<polygon") && !muted.contains(r##"fill="#2a2a2a""##));
         assert_eq!(Kind::from_uuid("com.malzar.prisma.audio.dial"), Some(Kind::Dial));
+        assert_eq!(Kind::from_uuid("com.malzar.prisma.audio.music"), Some(Kind::Music));
         assert_eq!(ActSettings::from_value(&json!({"target": "spotify.exe"})).step, 2);
     }
 }

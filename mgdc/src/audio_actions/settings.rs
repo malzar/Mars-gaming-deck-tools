@@ -22,6 +22,11 @@ pub struct ActSettings {
     pub gif: String,
     /// Rueda: "bar" (barra), "eq" (ecualizador en lugar de la barra) o "eqbg" (de fondo)
     pub dial_style: String,
+    /// Rueda de música: icono del programa que suena: "none", "state" (junto
+    /// al ▶), "background" (de fondo) o "title" (junto al título)
+    pub app_icon: String,
+    /// Y a qué lado: "left" o "right"
+    pub app_icon_side: String,
     /// La tecla está en un MSD-ONE (teclas pequeñas): no viene de los ajustes
     #[serde(skip)]
     pub small: bool,
@@ -38,6 +43,8 @@ impl Default for ActSettings {
             eq_mode: "level".into(),
             gif: String::new(),
             dial_style: "bar".into(),
+            app_icon: "state".into(),
+            app_icon_side: "left".into(),
             small: false,
         }
     }

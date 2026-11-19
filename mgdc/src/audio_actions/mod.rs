@@ -5,10 +5,12 @@
 //! - `state`: lo que hay en cada tecla, el último volumen y lo que suena
 //! - `render`: los dibujos (SVG) de las teclas y de las ruedas
 //! - `input`: pulsar, girar y pulsar la rueda
+//! - `app_icons`: iconos de los programas que suenan (rueda de música)
 //! - `outputs`: elegir la salida de audio desde la rueda (doble click)
 //! - `tasks`: repintar lo que cambia por fuera y mover el reproductor
 //! - `worker`: los hilos que hablan con Windows
 
+mod app_icons;
 mod input;
 mod outputs;
 mod render;
@@ -47,6 +49,8 @@ pub enum Kind {
     VolDown,
     Mute,
     Dial,
+    /// Rueda de música: girar cambia de pista, pulsar reproduce/pausa
+    Music,
 }
 
 impl Kind {
@@ -60,6 +64,7 @@ impl Kind {
             "voldown" => Kind::VolDown,
             "mute" => Kind::Mute,
             "dial" => Kind::Dial,
+            "music" => Kind::Music,
             _ => return None,
         })
     }
@@ -71,7 +76,7 @@ impl Kind {
 
     /// Se dibuja en la pantalla de una rueda (si no, en una tecla)
     fn on_dial(self) -> bool {
-        self == Kind::Dial
+        matches!(self, Kind::Dial | Kind::Music)
     }
 }
 
@@ -132,6 +137,10 @@ impl ActionGroup for Audio {
         Box::pin(async move {
             log::debug!("Audio: rueda {} ({} pasos)", event.action, event.payload.ticks);
             let (context, s, ticks) = (event.context.clone(), ActSettings::from_value(&event.payload.settings), event.payload.ticks);
+            if Kind::from_uuid(&event.action) == Some(Kind::Music) {
+                tokio::spawn(input::music_rotate(context, ticks));
+                return;
+            }
             tokio::spawn(async move {
                 // Eligiendo salida: girar pasa por las salidas
                 if !outputs::rotate(&context, ticks).await {
@@ -145,6 +154,10 @@ impl ActionGroup for Audio {
         Box::pin(async move {
             log::info!("Audio: rueda pulsada {}", event.action);
             let (context, s) = (event.context.clone(), ActSettings::from_value(&event.payload.settings));
+            if Kind::from_uuid(&event.action) == Some(Kind::Music) {
+                tokio::spawn(input::music_press(context));
+                return;
+            }
             tokio::spawn(async move {
                 // Eligiendo salida: el click deja puesta la que se ve
                 if outputs::confirm(&context).await {

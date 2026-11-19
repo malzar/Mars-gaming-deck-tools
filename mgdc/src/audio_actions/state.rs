@@ -114,8 +114,11 @@ pub(super) async fn refresh(context: &str) {
         }
         super::outputs::update_current().await;
     }
+    if kind == Kind::Music && let Some(n) = now_playing_cached().await {
+        super::app_icons::ensure(&n.process).await;
+    }
     let level = if kind.uses_level() { level_of(&settings.target).await } else { None };
-    let np = if kind == Kind::PlayPause || (kind == Kind::Dial && settings.show_title) { now_playing().await } else { None };
+    let np = if matches!(kind, Kind::PlayPause | Kind::Music) || (kind == Kind::Dial && settings.show_title) { now_playing().await } else { None };
     let svg = render_key(kind, &settings, level, np.as_ref(), None);
     let changed = match INSTANCES.lock().await.get_mut(context) {
         Some(i) if i.last != svg => {

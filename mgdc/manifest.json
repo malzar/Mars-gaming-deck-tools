@@ -162,6 +162,32 @@
       }
     },
     {
+      "Name": "Música (rueda)",
+      "UUID": "com.malzar.prisma.audio.music",
+      "Tooltip": "Gira para pasar a la pista siguiente o anterior; pulsa para reproducir o pausar",
+      "Icon": "assets/actions/music-icon",
+      "PropertyInspectorPath": "pi/audio.html",
+      "Controllers": [
+        "Encoder"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/music-icon",
+          "ShowTitle": false
+        }
+      ],
+      "Encoder": {
+        "layout": "layouts/audio-dial.json",
+        "Icon": "assets/actions/music-icon",
+        "TriggerDescription": {
+          "Rotate": "Pista anterior / siguiente",
+          "Push": "Reproducir / pausa",
+          "Touch": "Reproducir / pausa"
+        }
+      }
+    },
+    {
       "Name": "Perfiles (rueda)",
       "UUID": "com.malzar.prisma.profiles",
       "Tooltip": "Gira para recorrer los perfiles del mismo nivel (con vuelta al principio); pulsa para cambiar",

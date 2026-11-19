@@ -94,6 +94,36 @@ pub fn process_name(pid: u32) -> Option<String> {
 }
 
 fn open_process_name(pid: u32) -> Option<String> {
+    let path = open_process_path(pid)?;
+    path.rsplit(['\\', '/']).next().map(|s| s.to_lowercase())
+}
+
+/// Ruta del .exe de un programa en marcha (`spotify.exe`): el primero que
+/// se encuentre con ese nombre
+pub(super) fn process_path(process: &str) -> Option<String> {
+    use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS};
+    let target = process.trim().to_lowercase();
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).ok()?;
+        let mut e = PROCESSENTRY32W { dwSize: size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        let mut ok = Process32FirstW(snap, &mut e).is_ok();
+        let mut found = None;
+        while ok {
+            let len = e.szExeFile.iter().position(|&c| c == 0).unwrap_or(e.szExeFile.len());
+            if String::from_utf16_lossy(&e.szExeFile[..len]).to_lowercase() == target
+                && let Some(p) = open_process_path(e.th32ProcessID)
+            {
+                found = Some(p);
+                break;
+            }
+            ok = Process32NextW(snap, &mut e).is_ok();
+        }
+        let _ = CloseHandle(snap);
+        found
+    }
+}
+
+fn open_process_path(pid: u32) -> Option<String> {
     unsafe {
         let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
         let mut buf = [0u16; 1024];
@@ -101,8 +131,7 @@ fn open_process_name(pid: u32) -> Option<String> {
         let ok = QueryFullProcessImageNameW(handle, PROCESS_NAME_WIN32, PWSTR(buf.as_mut_ptr()), &mut len);
         let _ = CloseHandle(handle);
         ok.ok()?;
-        let path = String::from_utf16_lossy(&buf[..len as usize]);
-        path.rsplit(['\\', '/']).next().map(|s| s.to_lowercase())
+        Some(String::from_utf16_lossy(&buf[..len as usize]))
     }
 }
 

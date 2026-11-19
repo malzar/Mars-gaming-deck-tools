@@ -63,6 +63,22 @@
       <option value="eqbg" data-i18n="ecualizador_de_fondo">Ecualizador de fondo</option>
     </select>
   </div>
+  <div class="row hidden" id="iconRow">
+    <label for="appIcon" data-i18n="icono_del_programa">Icono del programa</label>
+    <select id="appIcon">
+      <option value="none" data-i18n="nada">Nada</option>
+      <option value="state" data-i18n="junto_al_estado">Junto al ▶ / ‖</option>
+      <option value="title" data-i18n="junto_al_titulo">Junto al título</option>
+      <option value="background" data-i18n="de_fondo">De fondo</option>
+    </select>
+  </div>
+  <div class="row hidden" id="iconSideRow">
+    <label for="appIconSide" data-i18n="lado">Lado</label>
+    <select id="appIconSide">
+      <option value="left" data-i18n="izquierda">Izquierda</option>
+      <option value="right" data-i18n="derecha">Derecha</option>
+    </select>
+  </div>
   <div class="row hidden" id="colorRow">
     <label for="barColor" data-i18n="color">Color</label>
     <input type="color" id="barColor">
@@ -87,6 +103,7 @@
   <p class="note" id="note"></p>
 
 <script src="i18n.js"></script>
+<script src="swipe.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   let ws = null, uuid = '', action = '', settings = {}, apps = [], small = false;
@@ -139,8 +156,22 @@
     // Rueda: estilo de la pantalla (con ecualizador o no)
     const dialStyle = settings.dial_style || 'bar';
     $('dialStyle').value = dialStyle;
-    $('dialRow').classList.toggle('hidden', k !== 'dial');
-    const dialEq = k === 'dial' && dialStyle !== 'bar';
+    const dialK = k === 'dial' || k === 'music';
+    // Música: sin nada de volumen en los textos
+    const music = k === 'music';
+    $('dialStyle').options[0].textContent = T(music ? 'sin_ecualizador' : 'barra_de_volumen');
+    $('dialStyle').options[1].textContent = T(music ? 'ecualizador' : 'ecualizador_en_lugar_de');
+    $('eqMode').options[1].textContent = T(music ? 'al_ritmo_del_sonido' : 'con_el_volumen_real');
+    const appIcon = settings.app_icon || 'state';
+    $('appIcon').value = appIcon;
+    $('appIconSide').value = settings.app_icon_side || 'left';
+    $('iconRow').classList.toggle('hidden', !music);
+    $('iconSideRow').classList.toggle('hidden', !music || appIcon === 'none' || appIcon === 'background');
+    // De fondo va el ecualizador o el icono, no los dos
+    $('appIcon').querySelector('[value="background"]').disabled = music && dialStyle === 'eqbg';
+    $('dialStyle').querySelector('[value="eqbg"]').disabled = music && appIcon === 'background';
+    $('dialRow').classList.toggle('hidden', !dialK);
+    const dialEq = dialK && dialStyle !== 'bar';
     $('colorRow').classList.toggle('hidden', !dialEq && (!barOk || !['color', 'waves', 'eq', 'eqbg'].includes(bar)));
     $('eqRow').classList.toggle('hidden', !dialEq && (!barOk || !['eq', 'eqbg'].includes(bar)));
     $('gifRow').classList.toggle('hidden', !barOk || bar !== 'gif');
@@ -154,6 +185,7 @@
     $('note').textContent = {
       playpause: T('manda_la_orden_al'),
       dial: T('gira_para_cambiar_el'),
+      music: T('gira_para_pasar_de_pista'),
     }[k] || '';
   }
 
@@ -180,6 +212,8 @@
     $('step').value = settings.step; save();
   };
   $('dialStyle').onchange = () => { settings.dial_style = $('dialStyle').value; save(); update(); };
+  $('appIcon').onchange = () => { settings.app_icon = $('appIcon').value; save(); update(); };
+  $('appIconSide').onchange = () => { settings.app_icon_side = $('appIconSide').value; save(); };
   $('bar').onchange = () => { settings.bar = $('bar').value; save(); update(); };
   $('barColor').oninput = () => { settings.bar_color = $('barColor').value; save(); };
   $('eqMode').onchange = () => { settings.eq_mode = $('eqMode').value; save(); };
@@ -200,8 +234,10 @@
     uuid = inUuid;
     const ai = typeof actionInfo === 'string' ? JSON.parse(actionInfo) : actionInfo;
     action = ai.action;
-    settings = Object.assign({ target: 'general', step: 2, show_title: true, bar: 'color', bar_color: '#2ecc71', eq_mode: 'level', gif: '', dial_style: 'bar' }, ai.payload && ai.payload.settings);
+    settings = Object.assign({ target: 'general', step: 2, show_title: true, bar: 'color', bar_color: '#2ecc71', eq_mode: 'level', gif: '', dial_style: 'bar', app_icon: 'state', app_icon_side: 'left' }, ai.payload && ai.payload.settings);
     renderTargets(); update();
+    // Deslizar en la pantalla: en la rueda de música (en la de volumen chocaría con el doble click)
+    if (kind() === 'music') PrismaSwipe.mount(ai, () => settings, save);
     ws = new WebSocket('ws://127.0.0.1:' + port);
     ws.onopen = () => {
       ws.send(JSON.stringify({ event: registerEvent, uuid }));
@@ -216,7 +252,7 @@
       if (p && p.gif) { settings.gif = p.gif; settings.bar = 'gif'; save(); delete $('gifState').dataset.busy; update(); }
       if (p && p.gifError) { delete $('gifState').dataset.busy; $('gifState').textContent = p.gifError; }
       if (msg.event === 'didReceiveSettings' && msg.payload) {
-        settings = Object.assign(settings, msg.payload.settings); renderTargets(); update();
+        settings = Object.assign(settings, msg.payload.settings); renderTargets(); update(); PrismaSwipe.refresh();
       }
     };
   };

@@ -153,7 +153,10 @@
     "wind.strong": "Fuerte",
     "wind.very_strong": "Muy fuerte",
     "audio.output_head": "Salida de audio · {} / {}",
-    "audio.output_done": "Click para terminar"
+    "audio.output_done": "Click para terminar",
+    "audio.music_idle": "No suena nada",
+    "audio.music_next": "Siguiente",
+    "audio.music_prev": "Anterior"
   },
   "pi": {
     "click": "Click",
@@ -315,7 +318,17 @@
     "sw_track": "Pista anterior / siguiente",
     "sw_invert": "Invertir dirección",
     "sw_note_off": "Tocar la zona de esta rueda responde al momento.",
-    "sw_note_on": "Toca la zona de esta rueda, suelta y desliza a velocidad normal. Si no detecta bien el gesto, ajusta el tiempo para deslizar en el panel de Prisma (pestaña Pantalla)."
+    "sw_note_on": "Toca la zona de esta rueda, suelta y desliza a velocidad normal. Si no detecta bien el gesto, ajusta el tiempo para deslizar en el panel de Prisma (pestaña Pantalla).",
+    "gira_para_pasar_de_pista": "Gira para pasar a la pista siguiente o anterior; pulsa la rueda o toca la pantalla para reproducir o pausar.",
+    "sin_ecualizador": "Sin ecualizador",
+    "al_ritmo_del_sonido": "Al ritmo del sonido",
+    "icono_del_programa": "Icono del programa",
+    "junto_al_estado": "Junto al ▶ / ‖",
+    "junto_al_titulo": "Junto al título",
+    "de_fondo": "De fondo",
+    "lado": "Lado",
+    "izquierda": "Izquierda",
+    "derecha": "Derecha"
   },
   "panel": {
     "screen": "Pantalla",
@@ -561,6 +574,17 @@
           "Rotate": "Volumen",
           "Push": "Silenciar",
           "Touch": "Silenciar"
+        }
+      }
+    },
+    "com.malzar.prisma.audio.music": {
+      "Name": "Música (rueda)",
+      "Tooltip": "Gira para pasar a la pista siguiente o anterior; pulsa para reproducir o pausar",
+      "Encoder": {
+        "TriggerDescription": {
+          "Rotate": "Pista anterior / siguiente",
+          "Push": "Reproducir / pausa",
+          "Touch": "Reproducir / pausa"
         }
       }
     },

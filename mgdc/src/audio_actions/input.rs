@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 
 use super::{
     Kind,
-    render::{dial_moving, render_dial, render_dial_frame, render_key},
+    render::{dial_moving, render_dial, render_dial_frame, render_key, render_music},
     settings::ActSettings,
     state::{INSTANCES, expect_playing, now_playing, now_playing_cached, refresh, remember_level, send_bg, set_animating},
     worker::{KEY_THREAD, run_blocking, run_on},
@@ -66,7 +66,7 @@ pub(super) async fn press(kind: Kind, context: String, s: ActSettings) {
         Kind::VolUp => (run_blocking(move || audio::change_volume(&target, step)).await.flatten(), None),
         Kind::VolDown => (run_blocking(move || audio::change_volume(&target, -step)).await.flatten(), None),
         Kind::Mute => (run_blocking(move || audio::toggle_mute(&target)).await.flatten(), None),
-        Kind::Dial => {
+        Kind::Dial | Kind::Music => {
             set_animating(&context, false).await;
             return;
         }
@@ -133,4 +133,64 @@ pub(super) async fn dial_mute(context: String, s: ActSettings) {
         let np = if s.show_title { now_playing_cached().await } else { None };
         send_bg(&context, Kind::Dial, &render_dial(&s, Some(l), np.as_ref(), None)).await;
     }
+}
+
+// ------------------------------------------------------------------ música --
+
+/// Entre una pista y la siguiente al girar rápido
+const SKIP_GAP: Duration = Duration::from_millis(300);
+/// Cuánto se ve «Siguiente» / «Anterior»
+const SKIP_SHOW: Duration = Duration::from_millis(800);
+
+/// Cuándo saltó de pista cada rueda de música, y el último aviso pintado
+static SKIPPED: LazyLock<Mutex<HashMap<String, (std::time::Instant, u64)>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
+async fn media_key(key: MediaKey) {
+    match run_on(&KEY_THREAD, move || crate::media::send(key)).await {
+        Some(r) => log::info!("Audio: {key:?}: {r}"),
+        None => log::warn!("Audio: {key:?} no terminó"),
+    }
+}
+
+/// Pulsar la rueda de música: reproducir o pausar
+pub(super) async fn music_press(context: String) {
+    let np = now_playing_cached().await;
+    expect_playing(!np.as_ref().is_some_and(|n| n.playing)).await;
+    let s = match INSTANCES.lock().await.get(&context) {
+        Some(i) => i.settings.clone(),
+        None => return,
+    };
+    // La rueda cambia al momento; luego se mira lo que de verdad pasó
+    send_bg(&context, Kind::Music, &render_music(&s, now_playing_cached().await.as_ref(), &crate::player::Frame::still())).await;
+    media_key(MediaKey::PlayPause).await;
+    tokio::time::sleep(Duration::from_millis(400)).await;
+    now_playing().await;
+    refresh(&context).await;
+}
+
+/// Girar la rueda de música: pista siguiente o anterior (una cada poco,
+/// aunque se gire rápido)
+pub(super) async fn music_rotate(context: String, ticks: i16) {
+    let next = ticks > 0;
+    let seq = {
+        let mut map = SKIPPED.lock().await;
+        let e = map.entry(context.clone()).or_insert((std::time::Instant::now() - SKIP_GAP, 0));
+        if e.0.elapsed() < SKIP_GAP {
+            return;
+        }
+        *e = (std::time::Instant::now(), e.1 + 1);
+        e.1
+    };
+    let title = now_playing_cached().await.map(|n| n.title).unwrap_or_default();
+    set_animating(&context, true).await;
+    send_bg(&context, Kind::Music, &crate::player::render_music_skip(&title, next)).await;
+    media_key(if next { MediaKey::Next } else { MediaKey::Prev }).await;
+    tokio::time::sleep(SKIP_SHOW).await;
+    // Si se giró otra vez mientras tanto, ya lo terminará ese giro
+    if SKIPPED.lock().await.get(&context).is_some_and(|e| e.1 != seq) {
+        return;
+    }
+    now_playing().await;
+    set_animating(&context, false).await;
+    refresh(&context).await;
 }

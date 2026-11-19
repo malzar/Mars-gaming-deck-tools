@@ -12,6 +12,9 @@ pub fn default_output_kind() -> Option<OutputKind> {
     None
 }
 pub fn forget_devices() {}
+pub fn app_icon(_process: &str) -> Option<(u32, Vec<u8>)> {
+    None
+}
 pub fn apps() -> Vec<String> {
     vec![]
 }

@@ -32,22 +32,22 @@ impl DialStyle {
     }
 }
 
-const DIAL_W: f32 = 176.0;
-const DIAL_TITLE: f32 = 17.0;
+pub(super) const DIAL_W: f32 = 176.0;
+pub(super) const DIAL_TITLE: f32 = 17.0;
 
 /// Dónde van las barras del ecualizador
-struct EqArea {
+pub(super) struct EqArea {
     /// Cuántas barras
-    bars: usize,
+    pub(super) bars: usize,
     /// Izquierda y ancho de la zona
-    x: f32,
-    w: f32,
+    pub(super) x: f32,
+    pub(super) w: f32,
     /// Línea de abajo y alto máximo de una barra
-    bottom: f32,
-    max_h: f32,
+    pub(super) bottom: f32,
+    pub(super) max_h: f32,
 }
 
-fn eq_bars(eq: &[f32; EQ_BARS], area: EqArea, color: &str, opacity: f32) -> String {
+pub(super) fn eq_bars(eq: &[f32; EQ_BARS], area: EqArea, color: &str, opacity: f32) -> String {
     let EqArea { bars: n, x: x0, w, bottom, max_h } = area;
     let bw = w / n as f32;
     eq.iter()

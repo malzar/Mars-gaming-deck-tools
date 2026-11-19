@@ -153,7 +153,10 @@
     "wind.strong": "Strong",
     "wind.very_strong": "Very strong",
     "audio.output_head": "Audio output · {} / {}",
-    "audio.output_done": "Click to finish"
+    "audio.output_done": "Click to finish",
+    "audio.music_idle": "Nothing playing",
+    "audio.music_next": "Next",
+    "audio.music_prev": "Previous"
   },
   "pi": {
     "click": "Click",
@@ -315,7 +318,17 @@
     "sw_track": "Previous / next track",
     "sw_invert": "Reverse direction",
     "sw_note_off": "Tapping this dial’s zone responds right away.",
-    "sw_note_on": "Tap this dial’s zone, release and swipe at a normal speed. If the gesture isn’t detected well, adjust the swipe time in the Prisma panel (Screen tab)."
+    "sw_note_on": "Tap this dial’s zone, release and swipe at a normal speed. If the gesture isn’t detected well, adjust the swipe time in the Prisma panel (Screen tab).",
+    "gira_para_pasar_de_pista": "Turn to go to the next or previous track; press the dial or tap the screen to play or pause.",
+    "sin_ecualizador": "No equalizer",
+    "al_ritmo_del_sonido": "Following the sound",
+    "icono_del_programa": "App icon",
+    "junto_al_estado": "Next to ▶ / ‖",
+    "junto_al_titulo": "Next to the title",
+    "de_fondo": "In the background",
+    "lado": "Side",
+    "izquierda": "Left",
+    "derecha": "Right"
   },
   "panel": {
     "screen": "Screen",
@@ -561,6 +574,17 @@
           "Rotate": "Volume",
           "Push": "Mute",
           "Touch": "Mute"
+        }
+      }
+    },
+    "com.malzar.prisma.audio.music": {
+      "Name": "Music (dial)",
+      "Tooltip": "Turn for the next or previous track; press to play or pause",
+      "Encoder": {
+        "TriggerDescription": {
+          "Rotate": "Previous / next track",
+          "Push": "Play / pause",
+          "Touch": "Play / pause"
         }
       }
     },

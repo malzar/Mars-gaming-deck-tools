@@ -5,7 +5,7 @@ use std::{collections::HashMap, time::Duration};
 
 use super::{
     Kind,
-    render::{dial_moving, dial_song, render_dial_frame, render_key},
+    render::{dial_moving, dial_song, music_view, render_dial_frame, render_key, render_music},
     settings::ActSettings,
     state::{INSTANCES, LEVELS, level_of, now_playing, now_playing_cached, send_bg},
     worker::{MEDIA_THREAD, run_blocking, run_on},
@@ -35,8 +35,11 @@ pub async fn poll_task() {
                 levels.insert(s.target.clone(), level_of(&s.target).await);
             }
         }
-        let needs_np = items.iter().any(|(_, k, s)| *k == Kind::PlayPause || (*k == Kind::Dial && s.show_title));
+        let needs_np = items.iter().any(|(_, k, s)| matches!(k, Kind::PlayPause | Kind::Music) || (*k == Kind::Dial && s.show_title));
         let np = if needs_np { now_playing().await } else { None };
+        if let Some(n) = np.as_ref().filter(|_| items.iter().any(|(_, k, _)| *k == Kind::Music)) {
+            super::app_icons::ensure(&n.process).await;
+        }
 
         for (context, kind, settings) in items {
             if settings.shows_player(kind) {
@@ -45,6 +48,9 @@ pub async fn poll_task() {
             let level = levels.get(&settings.target).copied().flatten();
             // La rueda que se mueve la pinta player_task
             if kind == Kind::Dial && dial_moving(&settings, level, np.as_ref()) {
+                continue;
+            }
+            if kind == Kind::Music && crate::player::music_moving(&music_view(&settings, np.as_ref())) {
                 continue;
             }
             let svg = render_key(kind, &settings, level, np.as_ref(), None);
@@ -74,7 +80,7 @@ pub async fn player_task() {
             .lock()
             .await
             .iter()
-            .filter(|(_, i)| !i.animating && (i.settings.shows_player(i.kind) || i.kind == Kind::Dial))
+            .filter(|(_, i)| !i.animating && (i.settings.shows_player(i.kind) || i.kind.on_dial()))
             .map(|(c, i)| (c.clone(), i.kind, i.settings.clone()))
             .collect();
         if all.is_empty() {
@@ -83,9 +89,12 @@ pub async fn player_task() {
         let np = now_playing_cached().await;
         let dials: Vec<(String, ActSettings)> =
             all.iter().filter(|(_, k, _)| *k == Kind::Dial).map(|(c, _, s)| (c.clone(), s.clone())).collect();
+        let music: Vec<(String, ActSettings)> =
+            all.iter().filter(|(_, k, _)| *k == Kind::Music).map(|(c, _, s)| (c.clone(), s.clone())).collect();
         let items: Vec<(String, ActSettings)> =
-            all.into_iter().filter(|(_, k, _)| *k != Kind::Dial).map(|(c, _, s)| (c, s)).collect();
+            all.into_iter().filter(|(_, k, _)| !k.on_dial()).map(|(c, _, s)| (c, s)).collect();
         player_dials(dials, np.as_ref(), tick).await;
+        player_music(music, np.as_ref(), tick).await;
         if items.is_empty() {
             continue;
         }
@@ -143,6 +152,43 @@ pub async fn player_task() {
             if changed {
                 send_bg(&context, Kind::PlayPause, &svg).await;
             }
+        }
+    }
+}
+
+/// Fotograma de las ruedas de música que se mueven
+async fn player_music(dials: Vec<(String, ActSettings)>, np: Option<&NowPlaying>, tick: u64) {
+    use crate::player::{self, EqMode};
+    for (context, s) in dials {
+        if !player::music_moving(&music_view(&s, np)) {
+            continue;
+        }
+        let peak = if EqMode::from_id(&s.eq_mode) == EqMode::Level {
+            run_blocking(|| audio::peak("")).await.flatten().unwrap_or(0.0)
+        } else {
+            0.0
+        };
+        let song = np.map(|n| format!("{}\u{1}{}", n.title, n.artist)).unwrap_or_default();
+        let (t, eq) = {
+            let mut map = INSTANCES.lock().await;
+            let Some(i) = map.get_mut(&context) else { continue };
+            if i.song != song {
+                i.song = song;
+                i.since = std::time::Instant::now();
+            }
+            i.eq = player::next_eq(i.eq, EqMode::from_id(&s.eq_mode), peak, tick);
+            (i.since.elapsed().as_secs_f32(), i.eq)
+        };
+        let svg = render_music(&s, np, &player::Frame { t, eq, gif: None });
+        let changed = match INSTANCES.lock().await.get_mut(&context) {
+            Some(i) if !i.animating && i.last != svg => {
+                i.last = svg.clone();
+                true
+            }
+            _ => false,
+        };
+        if changed {
+            send_bg(&context, Kind::Music, &svg).await;
         }
     }
 }

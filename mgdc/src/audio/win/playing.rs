@@ -21,9 +21,10 @@ use crate::audio::{NowPlaying, parse_title};
 
 // ------------------------------------------------------------ lo que suena --
 //
-// Se lee del nombre de las ventanas (Brave pone "Vídeo - YouTube - Brave",
-// Spotify "Artista - Canción"). No se usa el control multimedia de Windows:
-// lo sirve el propio explorador y, si se atasca, bloquea el escritorio.
+// Primero lo que diga el control multimedia de Windows (ver
+// `media_session`: solo lee cuando Windows avisa de un cambio). Si eso no
+// funciona, del nombre de las ventanas (Brave pone "Vídeo - YouTube -
+// Brave", Spotify "Artista - Canción").
 
 /// Programas con sonido saliendo ahora mismo
 pub fn playing_processes() -> Vec<String> {
@@ -118,6 +119,10 @@ fn audible(process: &str) -> bool {
 }
 
 pub fn now_playing() -> Option<NowPlaying> {
+    // Si Windows lo sabe, manda (aunque diga que no suena nada)
+    if let Some(list) = super::media_session::current() {
+        return list.iter().find(|n| n.playing).or(list.first()).cloned();
+    }
     let active = playing_processes();
     let mut found: Option<NowPlaying> = None;
     let mut heard: HashMap<String, bool> = HashMap::new();

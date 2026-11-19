@@ -1,13 +1,18 @@
 //! Audio en Windows (COM): volumen general y por programa, y lo que suena
 //!
 //! - `volume`: altavoces, sesiones de cada programa y sus nombres
+//! - `media_session`: lo que suena según el control multimedia de Windows
+//! - `app_icon`: el icono del programa que suena
 //! - `output`: salidas de audio (altavoces, auriculares…) y cambiar la de Windows
 //! - `playing`: qué programas suenan, sus ventanas y el volumen real (pico)
 
+mod app_icon;
+mod media_session;
 mod output;
 mod playing;
 mod volume;
 
+pub use app_icon::app_icon;
 pub use output::{default_output_kind, outputs, set_default_output};
 pub use playing::{now_playing, peak, playing_processes};
 pub use volume::{apps, level, process_name, set_mute, set_volume};

@@ -93,6 +93,33 @@ pub fn display_name(target: &str) -> String {
 #[cfg_attr(not(windows), allow(dead_code))]
 pub const BROWSERS: [&str; 6] = ["brave.exe", "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "vivaldi.exe"];
 
+/// El .exe de un programa según el nombre con el que se presenta al control
+/// multimedia de Windows («Spotify.exe», «Chrome», «308046B0AF4A39CB»…)
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn exe_of_app(app: &str) -> String {
+    let a = app.trim().to_lowercase();
+    let known = [
+        ("308046b0af4a39cb", "firefox.exe"),
+        ("firefox", "firefox.exe"),
+        ("msedge", "msedge.exe"),
+        ("microsoftedge", "msedge.exe"),
+        ("brave", "brave.exe"),
+        ("chrome", "chrome.exe"),
+        ("opera", "opera.exe"),
+        ("vivaldi", "vivaldi.exe"),
+        ("spotify", "spotify.exe"),
+    ];
+    if let Some((_, exe)) = known.iter().find(|(k, _)| a.contains(k)) {
+        return exe.to_string();
+    }
+    if a.ends_with(".exe") {
+        return a.rsplit(['\\', '/']).next().unwrap_or(&a).to_string();
+    }
+    // Apps de la tienda: «Empresa.App_xxx!App» → «app.exe»
+    let name = a.split('!').next_back().unwrap_or(&a);
+    format!("{name}.exe")
+}
+
 /// Saca título y artista del nombre de la ventana de un reproductor conocido
 #[cfg_attr(not(windows), allow(dead_code))]
 pub fn parse_title(process: &str, title: &str) -> Option<(String, String)> {
@@ -148,6 +175,11 @@ mod tests {
         assert_eq!(parse_title("brave.exe", "(2) Lofi beats - YouTube - Brave").unwrap().0, "Lofi beats");
         assert_eq!(parse_title("brave.exe", "Canción - YouTube Music - Brave").unwrap().0, "Canción");
         assert!(parse_title("brave.exe", "Google - Brave").is_none());
+        assert_eq!(exe_of_app("Spotify.exe"), "spotify.exe");
+        assert_eq!(exe_of_app("Chrome"), "chrome.exe");
+        assert_eq!(exe_of_app("308046B0AF4A39CB"), "firefox.exe");
+        assert_eq!(exe_of_app("C:\\Apps\\vlc.exe"), "vlc.exe");
+        assert_eq!(exe_of_app("Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic"), "microsoft.zunemusic.exe");
         assert_eq!(parse_title("spotify.exe", "Queen - Bohemian Rhapsody").unwrap(), ("Bohemian Rhapsody".into(), "Queen".into()));
         assert!(parse_title("spotify.exe", "Spotify Premium").is_none());
         assert_eq!(parse_title("vlc.exe", "peli.mkv - Reproductor multimedia VLC").unwrap().0, "peli.mkv");
