@@ -1,9 +1,9 @@
-name: Build MGDC
+name: Build Prisma
 
 on:
   push:
     branches: [main]
-    paths: ["mgdc/**", ".github/workflows/build-mgdc.yml"]
+    paths: ["prisma/**", ".github/workflows/build-prisma.yml"]
   workflow_dispatch:
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        working-directory: mgdc
+        working-directory: prisma
     steps:
       - uses: actions/checkout@v4
       - name: Compilar y empaquetar
@@ -19,6 +19,6 @@ jobs:
         run: ./package.ps1
       - uses: actions/upload-artifact@v4
         with:
-          name: com.malzar.mgdc.sdPlugin
-          path: mgdc/dist/com.malzar.mgdc.sdPlugin.zip
+          name: com.malzar.prisma.sdPlugin
+          path: prisma/dist/com.malzar.prisma.sdPlugin.zip
           retention-days: 30

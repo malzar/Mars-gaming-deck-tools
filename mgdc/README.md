@@ -2,12 +2,12 @@
 
 # Prisma
 
-*One plugin to bind them all.* Un solo plugin de **OpenDeck** para controlar los decks de Mars Gaming y sus clones (antes se llamaba MGDC, Mars Gaming Deck Controller):
+*One plugin to bind them all.* Un solo plugin de **OpenDeck** para los decks de Mars Gaming y sus clones: controla el propio deck y añade acciones para teclas y ruedas (antes se llamaba MGDC, Mars Gaming Deck Controller):
 
 | Familia | Decks | Controles |
 |---|---|---|
 | AKP153 / Mirabox 293S | **Mars Gaming MSD-ONE**, Ajazz AKP153, Mirabox HSV293S, Soomfon, Womier D15… | 15 teclas + 3 iconos laterales |
-| AKP05 / Mirabox N4 | **Mars Gaming MSD-PRO**, Ajazz AKP05, Mirabox N4, VSDInside N4, Redragon SS552… | 10 teclas, 4 ruedas, tira táctil |
+| AKP05 / Mirabox N4 | **Mars Gaming MSD-PRO**, Ajazz AKP05, Mirabox N4, VSDInside N4, Redragon SS552… | 10 teclas, 4 ruedas, pantalla táctil |
 
 Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*. **No los tengas instalados a la vez**, porque se pelearían por los decks.
 
@@ -16,7 +16,7 @@ Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabo
 ## Instalación
 
 1. En OpenDeck, desinstala *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*.
-2. Plugins → **Install from file** → `com.malzar.prisma.sdPlugin.zip` (sin descomprimir).
+2. Descarga `com.malzar.prisma.sdPlugin.zip` de la última versión en [Releases](https://github.com/malzar/prisma-deck/releases) y en OpenDeck: Plugins → **Install from file** (sin descomprimir).
 3. Reinicia OpenDeck.
 
 ### Perfiles
@@ -52,17 +52,26 @@ Notas:
 - "Apagar la pantalla" pone el brillo a 0, así al despertar no hace falta volver a enviar las imágenes.
 - El brillo que pongas desde OpenDeck (por ejemplo con la acción *Device Brightness*) se guarda como brillo del deck. Si el horario de día y noche está activo, manda el horario.
 
-## Audio
+## Acciones
 
-En OpenDeck, categoría **Prisma**:
+En OpenDeck, categoría **Prisma**. Cada acción tiene sus ajustes ordenados en pestañas: *General*, *Configuración*, *Comportamiento* y, en las ruedas, *Pantalla táctil*.
 
 | Acción | Dónde | Qué hace |
 |---|---|---|
-| Reproducir / Pausa, Detener, Anterior, Siguiente | Teclas | Orden multimedia al reproductor (Spotify, navegador, VLC…), con varios *métodos* a elegir en sus ajustes mientras se prueba cuál llega mejor en segundo plano. Reproducir / Pausa puede mostrar el título, que se lee del nombre de la ventana del reproductor. |
-| Subir volumen, Bajar volumen, Silenciar | Teclas | Volumen general o de un programa, con animación al pulsar y el volumen actual debajo. |
-| Volumen (rueda) | Ruedas del MSD-PRO | Girar cambia el volumen; pulsar o tocar la pantalla silencia. En su trozo de pantalla: nombre, porcentaje y barra; en el general, también lo que suena. |
+| Perfiles (rueda), Entrar / cambiar perfil, Perfil actual | Ruedas y teclas | Moverse entre perfiles y subperfiles por niveles, crearlos y borrarlos. |
+| Reproducir / Pausa, Detener, Anterior, Siguiente | Teclas | Órdenes multimedia al programa que suena (Spotify, navegador, VLC…). Reproducir / Pausa puede mostrar el título. |
+| Subir volumen, Bajar volumen, Silenciar | Teclas | Volumen general o de un programa, con el volumen actual debajo. |
+| Volumen (rueda) | Ruedas | Girar cambia el volumen y pulsar silencia. Con un doble click y girando se cambia la salida de audio (altavoces, auriculares…). |
+| Música (rueda) | Ruedas | Lo que suena (título, artista y el icono del programa), con reproducir / pausa y pista anterior / siguiente. Lee la sesión multimedia de Windows. |
+| Hora | Teclas y ruedas | Digital o con agujas; click o doble click cambia entre los dos estilos. |
+| Fecha | Teclas y ruedas | Día de la semana, día y mes. |
+| Meteorología | Teclas y ruedas | Vistas a elegir y ordenar: ahora, previsión, viento, lluvia prevista (solo si va a llover), calidad del aire, polen, índice UV, sol y luna, y avisos (los oficiales del país y los calculados: lluvia, tormenta, nieve, calor, frío y rachas), con sonidos configurables. |
+| Astronomía | Teclas y ruedas | Sol (eventos del día o fases de luz: crepúsculos, hora dorada y azul), Luna, los planetas y las estrellas que elijas: si se ven ahora y a qué altura, salida, puesta y constelación o distancia. Calculado sin internet. |
+| Temporizador, Pomodoro | Teclas y ruedas | Cuenta atrás, cronómetro y Pomodoro, digital o con agujas. Al acabar parpadea y, si se quiere, suena. En las ruedas, el tiempo se cambia girando. |
 
-En los ajustes de cada acción se elige el destino (*General* primero, luego los programas que están sonando, u *Otro programa…* para escribirlo o elegir su `.exe`), el paso (2 % por defecto) y si se muestra lo que suena.
+Las vistas de Meteorología y Astronomía pasan girando la rueda, al pulsar o solas cada X segundos, como se elija en sus ajustes.
+
+**Pantalla táctil (MSD-PRO):** tocar la zona de una rueda y deslizar a izquierda o derecha hace lo mismo que girarla, o pasa de pista, según la rueda. El tiempo para deslizar tras el toque se ajusta en el panel de Prisma.
 
 ## Idiomas
 
@@ -82,7 +91,7 @@ Para añadir un idioma, copia `locales/en.json` como `locales/<código>.json` (`
 Requisitos: [Rust](https://rustup.rs) con las herramientas de compilación de Visual Studio (MSVC).
 
 ```powershell
-cd mgdc
+cd prisma
 powershell -ExecutionPolicy Bypass -File .\package.ps1
 ```
 
@@ -93,10 +102,10 @@ Genera `dist\com.malzar.prisma.sdPlugin.zip`.
 Cada cosa en su módulo, y cada módulo partido por responsabilidades (el `mod.rs` de cada carpeta explica qué hay en cada fichero):
 
 - `actions/`: reparte los eventos de OpenDeck. Cada grupo de acciones implementa `ActionGroup` y se apunta en `GROUPS`; para añadir uno no hay que tocar el reparto.
-- Grupos de acciones: `audio_actions/` (multimedia y volumen), `profiles/` (rueda de perfiles, teclas virtuales, crear y borrar), `profile_keys.rs` («Entrar / cambiar» y «Perfil actual»), `widgets/` (hora, fecha y tiempo: cada vista del tiempo en su fichero, apuntada en `widgets/weather/mod.rs`) y `timers/` (temporizador y Pomodoro).
+- Grupos de acciones: `audio_actions/` (multimedia, volumen y música), `profiles/` (rueda de perfiles, teclas virtuales, crear y borrar), `profile_keys.rs` («Entrar / cambiar» y «Perfil actual»), `widgets/` (hora, fecha, Meteorología y Astronomía: cada vista en su fichero, apuntadas en `widgets/weather/mod.rs` y `widgets/astro/mod.rs`) y `timers/` (temporizador y Pomodoro).
 - Piezas comunes: `svg.rs` (dibujar), `canvas.rs` (mandar dibujos y respuestas a OpenDeck) y `clicks.rs` (click y doble click).
 - El deck: `device.rs`, `family/` (MSD-ONE y MSD-PRO), `animation/` (arranque y cierre: cada animación por pasos en `patterns.rs`), `power.rs`, `schedule.rs`.
-- Fuera del deck: `audio/` (Windows, aparte en `audio/win/`), `weather/` (Open-Meteo), `player/` (dibujo del reproductor), `sounds.rs`, `panel/` (el panel de ajustes, con su página en `panel/` de la raíz: `index.html`, `style.css` y el código por apartados en `js/`).
+- Fuera del deck: `audio/` (Windows, aparte en `audio/win/`), `weather/` (Open-Meteo y avisos oficiales), `sky/` y `astro.rs` (Sol, Luna, planetas y estrellas; catálogo en `stars.rs`), `gestures.rs` y `touch.rs` (pantalla táctil), `player/` (dibujo del reproductor), `sounds.rs`, `panel/` (el panel de ajustes, con su página en `panel/` de la raíz: `index.html`, `style.css` y el código por apartados en `js/`).
 
 `cargo test` comprueba, entre otras cosas, que cada acción del manifiesto tiene su grupo y que las claves de idioma cuadran. `cargo clippy` no da avisos.
 
@@ -113,6 +122,6 @@ GPL-3.0. Basado en:
 - [mirajazz](https://github.com/4ndv/mirajazz) (versión de [ambiso](https://github.com/ambiso/mirajazz)), MPL-2.0.
 - Protocolo del fondo: [StreamDock-Device-SDK](https://github.com/MiraboxSpace/StreamDock-Device-SDK), de Mirabox.
 
-Datos del tiempo: **Weather data by [Open-Meteo.com](https://open-meteo.com/)**, con licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). La calidad del aire y el polen vienen de Copernicus (CAMS) y las localidades, de [GeoNames](https://www.geonames.org/) (CC BY 4.0), las dos a través de Open-Meteo. La fase y la posición de la luna usan las fórmulas de [SunCalc](https://github.com/mourner/suncalc) (BSD de 2 cláusulas).
+Datos del tiempo: **Weather data by [Open-Meteo.com](https://open-meteo.com/)**, con licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). La calidad del aire y el polen vienen de Copernicus (CAMS) y las localidades, de [GeoNames](https://www.geonames.org/) (CC BY 4.0), las dos a través de Open-Meteo. El Sol y la Luna usan las fórmulas de [SunCalc](https://github.com/mourner/suncalc) (BSD de 2 cláusulas), los planetas el método de Paul Schlyter y las estrellas el Yale Bright Star Catalog. Los avisos oficiales salen de los servicios meteorológicos de cada país (lista de la OMM).
 
 Todo lo que es de terceros (datos, código, fórmulas, bibliotecas y webs enlazadas), con su licencia y lo que pide cada una, está en [THIRD_PARTY.md](THIRD_PARTY.md).

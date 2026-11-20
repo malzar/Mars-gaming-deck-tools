@@ -7,7 +7,7 @@
   "CodePathWin": "prisma.exe",
   "Icon": "assets/icon",
   "Category": "Prisma",
-  "URL": "https://github.com/malzar/Mars-gaming-deck-tools",
+  "URL": "https://github.com/malzar/prisma-deck",
   "OS": [
     {
       "Platform": "windows",

@@ -4,7 +4,7 @@ version = "0.10.0"
 edition = "2024"
 license = "GPL-3.0"
 description = "Prisma: un solo plugin de OpenDeck para los decks MSD-ONE (familia AKP153) y MSD-PRO (familia AKP05 / N4)"
-repository = "https://github.com/malzar/Mars-gaming-deck-tools"
+repository = "https://github.com/malzar/prisma-deck"
 
 [dependencies]
 axum = "0.7"
