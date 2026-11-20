@@ -208,7 +208,7 @@ mod tests {
 fn muestras_rueda() {
     let dir = std::env::var("PRISMA_SAMPLES_OUT").unwrap();
     let eq = [0.3, 0.7, 1.0, 0.5, 0.8, 0.2, 0.6, 0.45, 0.9, 0.35, 0.75, 0.55];
-    let f = Frame { t: 0.0, eq, gif: None };
+    let f = Frame { t: 0.0, eq };
     let v = |style, title: &'static str, artist: &'static str| DialView {
         name: "General",
         value: "64",
@@ -229,7 +229,7 @@ fn muestras_rueda() {
         ("r1-barra", render_dial(&v(DialStyle::Bar, "Bohemian Rhapsody", "Queen"), &f)),
         ("r2-eq", render_dial(&v(DialStyle::Eq, "Bohemian Rhapsody", "Queen"), &f)),
         ("r3-fondo", render_dial(&v(DialStyle::EqBackground, "Bohemian Rhapsody", "Queen"), &f)),
-        ("r4-largo", render_dial(&v(DialStyle::Eq, "Never Gonna Give You Up (Official Video)", "Rick Astley"), &Frame { t: 3.0, eq, gif: None })),
+        ("r4-largo", render_dial(&v(DialStyle::Eq, "Never Gonna Give You Up (Official Video)", "Rick Astley"), &Frame { t: 3.0, eq })),
         ("r5-sin-titulo-barra", render_dial(&v(DialStyle::Bar, "", ""), &f)),
         ("r6-sin-titulo-eq", render_dial(&v(DialStyle::Eq, "", ""), &f)),
         ("r7-sin-titulo-fondo", render_dial(&v(DialStyle::EqBackground, "", ""), &f)),
@@ -239,6 +239,6 @@ fn muestras_rueda() {
     }
     let np = NowPlaying { title: "Never Gonna Give You Up".into(), artist: "Rick Astley".into(), playing: true, ..Default::default() };
     let look = Look { bar: Bar::Eq, color: "#2ecc71", small: true };
-    std::fs::write(format!("{dir}/k-one-eq.svg"), render(Some(&np), &look, &Frame { t: 3.0, eq, gif: None }, false)).unwrap();
+    std::fs::write(format!("{dir}/k-one-eq.svg"), render(Some(&np), &look, &Frame { t: 3.0, eq }, false)).unwrap();
 }
 }

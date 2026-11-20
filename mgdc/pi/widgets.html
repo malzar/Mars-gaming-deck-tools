@@ -13,6 +13,14 @@
   .checks label { display: flex; gap: 5px; align-items: center; }
   .note { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
   .hidden { display: none !important; }
+  button { height: 28px; padding: 0 12px; background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font: inherit; cursor: pointer; }
+  .order { display: flex; flex-direction: column; gap: 4px; }
+  .ord { display: flex; align-items: center; gap: 8px; background: var(--field); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; cursor: grab; user-select: none; }
+  .ord .h { color: var(--muted); } .ord .n { color: var(--muted); width: 16px; font-variant-numeric: tabular-nums; }
+  .ord .x { margin-left: auto; color: var(--muted); cursor: pointer; padding: 0 4px; border: none; background: none; height: auto; }
+  .ord.drag { opacity: .4; } .dropLine { height: 2px; background: #4aa3ff; border-radius: 2px; }
+  .grp b { display: block; color: var(--muted); font-weight: 500; font-size: 12px; margin: 6px 0 4px; }
+  .sect { margin: 14px 0 8px; padding-top: 8px; border-top: 1px solid var(--border); color: var(--muted); }
   a { color: #8ab4f8; }
 </style>
 </head>
@@ -33,32 +41,89 @@
     <p class="note" data-i18n="ensena_el_dia_de">Enseña el día de la semana, el día y el mes. Pulsarla no hace nada.</p>
   </div>
 
-  <!-- Tiempo -->
+  <!-- Tiempo y Astronomía (comparten la ventana; .wOnly / .aOnly: solo en uno) -->
   <div id="weather" class="hidden">
+    <div class="tabs" id="wTabs">
+      <button type="button" data-tab="general" data-i18n="pest_general">General</button>
+      <button type="button" data-tab="config" data-i18n="pest_config">Configuración</button>
+      <button type="button" data-tab="behaviour" data-i18n="pest_comportamiento">Comportamiento</button>
+      <button type="button" data-tab="alerts" data-i18n="avisos">Avisos</button>
+      <button type="button" data-tab="touch" class="dialOnly" data-i18n="pest_tactil">Pantalla táctil</button>
+    </div>
+    <div class="pane" data-pane="general">
     <div class="row"><label for="city" data-i18n="ciudad">Ciudad</label><input type="text" id="city" list="cities" placeholder="La del panel de Prisma" data-i18n-ph="la_del_panel_de" autocomplete="off"></div>
     <datalist id="cities"></datalist>
     <p class="note" id="cityNote"></p>
-    <div class="row"><label data-i18n="vistas">Vistas</label><div class="checks" id="views"></div></div>
+    <div class="row"><label data-i18n="vistas_en_orden">Vistas, en orden</label><div><div class="order" id="viewOrder"></div><p class="note" data-i18n="vistas_orden_nota">Arrastra para cambiar el orden; la ✕ la quita.</p></div></div>
+    <div class="row"><label data-i18n="anadir_vistas">Añadir vistas</label><div id="views"></div></div>
+    <div class="row aOnly" id="starRow"><label for="star" data-i18n="estrella">Estrella</label><input type="text" id="star" list="stars" placeholder="Vega, Sirius…" data-i18n-ph="busca_estrella" autocomplete="off"></div>
+    <datalist id="stars"></datalist>
+    <p class="note aOnly" id="starNote"></p>
+    <p class="note aOnly" data-i18n="astro_nota">Calculado aquí mismo, sin internet.</p>
+    <p class="note aOnly" data-i18n="astro_estrellas_credito">Estrellas: Yale Bright Star Catalog.</p>
+    <p class="note wOnly" data-i18n="datos_de_open_meteo">Datos de Open-Meteo (gratis, sin cuenta), cada 15 minutos. El polen solo lo hay en Europa y en su temporada; los niveles de polen son orientativos.</p>
+    <!-- Atribución que pide la licencia CC BY 4.0 de los datos -->
+    <p class="note wOnly"><a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>). <span data-i18n="credito_fuentes">Calidad del aire y polen: Copernicus (CAMS). Localidades: GeoNames.</span></p>
+    </div>
+    <div class="pane" data-pane="config">
+    <div class="row aOnly" id="sunModeRow"><label for="sun_mode" data-i18n="sol_pagina">Sol: 2.ª página</label><select id="sun_mode"><option value="events" data-i18n="sol_eventos">Eventos del día</option><option value="light" data-i18n="sol_fases">Fases de luz</option></select></div>
+    <div class="row wOnly" id="rainSpanRow"><label for="rain_span" data-i18n="lluvia_cuanto">Lluvia: cuánto</label><select id="rain_span"><option value="15">15 min</option><option value="30">30 min</option><option value="60">1 h</option><option value="120">2 h</option><option value="180">3 h</option><option value="360">6 h</option><option value="720">12 h</option><option value="1440" data-i18n="un_dia">1 día</option><option value="2880" data-i18n="dos_dias">2 días</option></select></div>
     <div class="row"><label for="rotate_secs" data-i18n="cambiar_sola">Cambiar sola</label><select id="rotate_secs"><option value="0" data-i18n="no">No</option><option value="5" data-i18n="cada_5_s">Cada 5 s</option><option value="10" data-i18n="cada_10_s">Cada 10 s</option><option value="15" data-i18n="cada_15_s">Cada 15 s</option><option value="30" data-i18n="cada_30_s">Cada 30 s</option><option value="60" data-i18n="cada_minuto">Cada minuto</option></select></div>
+    </div>
+    <div class="pane" data-pane="behaviour">
     <div class="row"><label for="click" data-i18n="click">Click</label><select id="click" data-k="click"></select></div>
     <div class="row"><label for="double" data-i18n="doble_click">Doble click</label><select id="double" data-k="double"></select></div>
     <p class="note" id="wNote"></p>
-    <p class="note" data-i18n="datos_de_open_meteo">Datos de Open-Meteo (gratis, sin cuenta), cada 15 minutos. El polen solo lo hay en Europa y en su temporada; los niveles de polen son orientativos.</p>
-    <!-- Atribución que pide la licencia CC BY 4.0 de los datos -->
-    <p class="note"><a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>). <span data-i18n="credito_fuentes">Calidad del aire y polen: Copernicus (CAMS). Localidades: GeoNames.</span></p>
+    </div>
+    <div class="pane" data-pane="alerts">
+    <div class="row"><label></label><label><input type="checkbox" id="alert_rain"> <span data-i18n="aviso_de_lluvia">Aviso de lluvia</span></label></div>
+    <div class="row rainOpt"><label for="rain_minutes" data-i18n="antelacion">Antelación</label><select id="rain_minutes"><option value="30">30 min</option><option value="60">1 h</option><option value="120">2 h</option><option value="180">3 h</option></select></div>
+    <div class="row rainOpt"><label for="rain_prob" data-i18n="probabilidad">Probabilidad</label><select id="rain_prob"><option value="30">30 %</option><option value="50">50 %</option><option value="70">70 %</option><option value="90">90 %</option></select></div>
+    <div class="row"><label></label><label><input type="checkbox" id="alert_official"> <span data-i18n="avisos_oficiales">Avisos oficiales</span></label></div>
+    <div class="row offOpt"><label for="alert_source" data-i18n="centro_de_avisos">Centro de avisos</label><input type="text" id="alert_source" list="sources" autocomplete="off"></div>
+    <datalist id="sources"></datalist>
+    <p class="note offOpt" id="srcNote"></p>
+    <p class="note offOpt hidden" id="srcStatus"></p>
+    <div class="row offOpt hidden" id="srcDlRow"><label></label><button type="button" id="srcDl" data-i18n="descargar_centros">Descargar la lista de centros</button></div>
+    <div class="row"><label></label><label><input type="checkbox" id="alert_calc"> <span data-i18n="avisos_calculados">Calculados con la previsión</span></label></div>
+    <div class="row calcOpt"><label for="gust_kmh" data-i18n="rachas_kmh">Rachas (km/h)</label><input type="number" id="gust_kmh" min="30" max="200" step="5"></div>
+    <div class="row calcOpt"><label for="heat_c" data-i18n="calor_c">Calor (°C)</label><input type="number" id="heat_c" min="25" max="55" step="1"></div>
+    <div class="row calcOpt"><label for="cold_c" data-i18n="frio_c">Frío (°C)</label><input type="number" id="cold_c" min="-40" max="10" step="1"></div>
+    <div class="row calcOpt"><label></label><div class="checks"><label><input type="checkbox" id="alert_storm"> <span data-i18n="tormentas">Tormentas</span></label><label><input type="checkbox" id="alert_snow"> <span data-i18n="nieve">Nieve</span></label></div></div>
+    <p class="sect" data-i18n="sonidos_de_aviso">Sonidos de aviso</p>
+    <div id="alertSounds"></div>
+    <p class="note" data-i18n="avisos_nota">Con un aviso, la tecla lo enseña unos segundos y otros la vista normal; un click lo quita hasta que cambie. Suena una vez al llegar.</p>
+    </div>
+    <div class="pane" data-pane="touch" id="touchPane"></div>
   </div>
 <script src="i18n.js"></script>
 <script src="swipe.js"></script>
+<script src="tabs.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   let ws = null, uuid = '', action = '', settings = {}, dial = false, kind = '';
-  const DEF = { style: 'digital', part: 'full', show_date: true, seconds: true, city: '', views: [], rotate_secs: 0, click: 'next', double: 'web', clock_click: 'style', clock_double: 'none' };
-  const VIEWS = {
-    key: [['now', 'ahora'], ['forecast', 'prevision_3_dias'], ['today', 'hoy'], ['tomorrow', 'manana'], ['after', 'pasado_manana'], ['wind', 'viento'], ['uv', 'indice_uv'], ['air', 'calidad_del_aire'], ['pollen', 'polen'], ['sun', 'sol_y_luna'], ['moon', 'fase_de_la_luna']],
-    dial: [['now', 'ahora'], ['forecast', 'prevision_4_dias'], ['hours', 'por_horas'], ['wind', 'viento'], ['uv', 'indice_uv'], ['air', 'calidad_del_aire'], ['pollen', 'polen'], ['sun', 'sol_y_luna'], ['moon', 'fase_de_la_luna']],
-  };
+  const DEF = { style: 'digital', part: 'full', show_date: true, seconds: true, city: '', views: [], rotate_secs: 0, click: 'next', double: 'web', clock_click: 'style', clock_double: 'none',
+    alert_rain: true, rain_minutes: 60, rain_prob: 50, alert_official: true, alert_source: '', alert_calc: true, heat_c: 38, cold_c: -5, gust_kmh: 70, alert_storm: true, alert_snow: true, rain_span: 120,
+    snd_rain: 'lluvia', snd_heat: 'sarten', snd_cold: 'ventisca', snd_wind: 'viento', snd_storm: 'trueno', snd_snow: 'ventisca', snd_other: 'alarma' };
+  const SOUNDS = [['', 'ninguno'], ['lluvia', 't_snd_lluvia'], ['sarten', 't_snd_sarten'], ['viento', 't_snd_viento'], ['trueno', 't_snd_trueno'], ['ventisca', 't_snd_ventisca'], ['campana', 't_snd_bell'], ['digital', 't_snd_digital'], ['marimba', 't_snd_marimba'], ['alarma', 't_snd_alarm'], ['suave', 't_snd_soft'], ['cucaracha', 't_snd_cucaracha'], ['trombon', 't_snd_trombone'], ['boing', 't_snd_boing'], ['system', 't_snd_system']];
+  const ALERT_SOUNDS = [['snd_rain', 'alerta_lluvia'], ['snd_heat', 'alerta_calor'], ['snd_cold', 'alerta_frio'], ['snd_wind', 'alerta_viento'], ['snd_storm', 'alerta_tormenta'], ['snd_snow', 'alerta_nieve'], ['snd_other', 'alerta_otros']];
+  // Vistas por grupos; `k`: en tecla, `d`: en rueda
+  const VIEW_GROUPS = [
+    ['g_prevision', [['now', 'ahora', 'kd'], ['forecast', 'prevision_3_dias', 'k'], ['forecast', 'prevision_4_dias', 'd'], ['today', 'hoy', 'k'], ['tomorrow', 'manana', 'k'], ['after', 'pasado_manana', 'k'], ['hours', 'por_horas', 'd'], ['wind', 'viento', 'kd'], ['rain', 'lluvia_prevista', 'kd']]],
+    ['g_aire', [['air', 'calidad_del_aire', 'kd'], ['pollen', 'polen', 'kd'], ['uv', 'indice_uv', 'kd']]],
+    ['g_astros', [['sun', 'sol_y_luna', 'kd']]],
+    ['g_avisos', [['alerts', 'avisos_activos', 'kd']]],
+  ];
+  // Astronomía: los mismos en tecla y rueda
+  const ASTRO_GROUPS = [
+    ['g_sistema_solar', [['sun', 'v_sol', 'kd'], ['moon', 'v_luna', 'kd']]],
+    ['g_planetas', [['mercury', 'v_mercury', 'kd'], ['venus', 'v_venus', 'kd'], ['mars', 'v_mars', 'kd'], ['jupiter', 'v_jupiter', 'kd'], ['saturn', 'v_saturn', 'kd'], ['uranus', 'v_uranus', 'kd'], ['neptune', 'v_neptune', 'kd']]],
+  ];
+  const groups = () => kind === 'astro' ? ASTRO_GROUPS : VIEW_GROUPS;
+  const defViews = () => kind === 'astro' ? ['sun', 'moon'] : ['now'];
   // Textos por clave (locales/<idioma>.json, sección pi): se traducen al pintarlos
   const ACTS = [['next', 'siguiente_vista'], ['web', 'abrir_la_prevision_en'], ['none', 'nada']];
+  const acts = () => kind === 'astro' ? ACTS.filter((a) => a[0] !== 'web') : ACTS;
   const CLOCK_ACTS = [['style', 'cambiar_agujas_digital'], ['none', 'nada']];
   function save() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event: 'setSettings', context: uuid, action, payload: settings })); }
   function send(payload) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event: 'sendToPlugin', context: uuid, action, payload })); }
@@ -68,6 +133,29 @@
   $('show_date').onchange = () => { settings.show_date = $('show_date').checked; save(); };
   $('seconds').onchange = () => { settings.seconds = $('seconds').checked; save(); };
   $('rotate_secs').onchange = () => { settings.rotate_secs = +$('rotate_secs').value; save(); };
+  $('sun_mode').onchange = () => { settings.sun_mode = $('sun_mode').value; save(); };
+  // Estrella: se busca en el catálogo (lo manda el plugin) por nombre,
+  // designación o constelación
+  let stars = [];
+  const starLabel = (x) => `${x.n}${x.b && x.b !== x.n ? ' — ' + x.b : ''} (${x.c})`;
+  function showStars() {
+    $('stars').innerHTML = stars.map((x) => `<option value="${starLabel(x).replace(/"/g, '&quot;')}">`).join('');
+  }
+  // Cada estrella elegida es una vista más («star:Nombre»)
+  const isStar = (id) => id.startsWith('star:');
+  $('star').onchange = () => {
+    const v = $('star').value.trim(), q = v.toLowerCase();
+    const x = stars.find((s) => starLabel(s) === v) || stars.find((s) => s.n.toLowerCase() === q || s.b.toLowerCase() === q) || (q.length > 1 ? stars.find((s) => starLabel(s).toLowerCase().includes(q)) : null);
+    // Sin la lista (aún no ha llegado): se guarda tal cual y el plugin la busca
+    const name = x ? x.n : (!stars.length ? v : '');
+    if (!v) return;
+    if (!name) { $('starNote').textContent = T('estrella_no_encontrada'); return; }
+    $('starNote').textContent = '';
+    $('star').value = '';
+    const views = defIfEmpty(settings.views);
+    if (!views.includes('star:' + name)) { settings.views = views.concat('star:' + name); save(); }
+    show();
+  };
   // Buscar la localidad: lo que se escribe se manda al plugin, que pregunta a
   // Open-Meteo; las respuestas salen en la lista del campo
   let found = [], searchTimer = null;
@@ -92,24 +180,146 @@
     $('cities').innerHTML = list.map((p) => `<option value="${label(p).replace(/"/g, '&quot;')}">`).join('');
     $('cityNote').textContent = list.length ? '' : T('sin_resultados');
   }
+  // Avisos: casillas, números y sonidos
+  ['alert_rain', 'alert_official', 'alert_calc', 'alert_storm', 'alert_snow'].forEach((k) => { $(k).onchange = () => { settings[k] = $(k).checked; show(); save(); if (k === 'alert_official') askStatus(); }; });
+  ['rain_minutes', 'rain_prob', 'rain_span'].forEach((k) => { $(k).onchange = () => { settings[k] = +$(k).value; save(); }; });
+  [['gust_kmh', 30, 200], ['heat_c', 25, 55], ['cold_c', -40, 10]].forEach(([k, lo, hi]) => {
+    $(k).onchange = () => { const v = Math.min(hi, Math.max(lo, +$(k).value || DEF[k])); $(k).value = v; settings[k] = v; save(); };
+  });
+  // Centro de avisos: se busca por nombre en la lista de la OMM (la manda el
+  // plugin); vacío = el más cercano al sitio
+  let sources = [], autoSource = '';
+  // «España — Spain: Agencia Estatal de Meteorología (AEMET)»: el país en el
+  // idioma de la ventana, para poder buscar «esp», «aemet»…
+  let regionNames;
+  const country = (x) => {
+    try {
+      if (regionNames === undefined) regionNames = new Intl.DisplayNames([window.prismaLangCode || navigator.language || 'es'], { type: 'region' });
+      return x.country ? regionNames.of(x.country.toUpperCase()) : '';
+    } catch (e) { regionNames = null; return ''; }
+  };
+  const srcLabel = (x) => [country(x), x.name].filter(Boolean).join(' — ') + (x.abbrev ? ` (${x.abbrev})` : '') + (x.ok ? '' : ' ⚠');
+  const srcName = (id) => { const x = sources.find((s) => s.id === id); return x ? srcLabel(x) : ''; };
+  $('alert_source').onchange = () => {
+    const v = $('alert_source').value.trim();
+    const none = T('ninguno');
+    const q = v.toLowerCase();
+    const src = sources.find((x) => srcLabel(x) === v) || (v.length > 1 ? sources.find((x) => srcLabel(x).toLowerCase().includes(q)) : null);
+    if (!v) settings.alert_source = '';
+    else if (v === none) settings.alert_source = 'none';
+    else if (src) settings.alert_source = src.id;
+    else { $('srcNote').textContent = T(sources.length ? 'centro_no_encontrado' : 'sin_lista_centros'); $('srcDlRow').classList.remove('hidden'); return; }
+    show(); save(); askStatus();
+  };
+  // Bajar otra vez la lista de la OMM (si no está, o no sale el centro)
+  $('srcDl').onclick = () => {
+    $('srcNote').textContent = T('descargando_centros');
+    send({ request: 'alertSources', download: true, lat: settings.lat, lon: settings.lon });
+  };
+  // Estado del centro elegido: ✓ verde si se leen sus avisos, ✗ si falla;
+  // mientras lee, se vuelve a preguntar
+  let statusTimer = null;
+  function askStatus() { clearTimeout(statusTimer); statusTimer = setTimeout(() => send({ request: 'alertStatus' }), 400); }
+  function showStatus(st) {
+    const el = $('srcStatus');
+    el.classList.toggle('hidden', !st);
+    if (!st) return;
+    if (st.state === 'loading') {
+      el.style.color = ''; el.textContent = '⏳ ' + T('centro_comprobando');
+      statusTimer = setTimeout(() => send({ request: 'alertStatus' }), 3000);
+    } else if (st.state === 'ok') {
+      el.style.color = '#2ecc71';
+      el.textContent = '✓ ' + T('centro_ok').replace('{total}', st.total).replace('{here}', st.here).replace('{min}', st.minutes);
+    } else {
+      el.style.color = '#e5483b'; el.textContent = '✗ ' + T('centro_error') + (st.error ? ' (' + st.error + ')' : '');
+    }
+  }
+  function showSources() {
+    $('srcDlRow').classList.toggle('hidden', sources.length > 0);
+    const list = sources.slice().sort((a, b) => srcLabel(a).localeCompare(srcLabel(b)));
+    $('sources').innerHTML = [T('ninguno')].concat(list.map(srcLabel)).map((n) => `<option value="${n.replace(/"/g, '&quot;')}">`).join('');
+    const s = Object.assign({}, DEF, settings);
+    $('alert_source').placeholder = autoSource ? T('automatico') + ': ' + srcName(autoSource) : T('automatico');
+    $('alert_source').value = s.alert_source === 'none' ? T('ninguno') : srcName(s.alert_source);
+    const cur = sources.find((x) => x.id === (s.alert_source || autoSource));
+    $('srcNote').textContent = s.alert_source === 'none' ? '' : (cur && !cur.ok ? T('centro_caido') : T('centro_nota'));
+  }
+  const defIfEmpty = (v) => (v && v.length ? v : defViews());
+  // Pestañas del tiempo
+  const tabs = PrismaTabs($('weather'), 'weather');
   function show() {
     const s = Object.assign({}, DEF, settings);
-    ['clock', 'date', 'weather'].forEach((k) => $(k).classList.toggle('hidden', k !== kind));
+    tabs.setDial(dial);
+    ['alert_rain', 'alert_official', 'alert_calc', 'alert_storm', 'alert_snow'].forEach((k) => { $(k).checked = !!s[k]; });
+    ['rain_minutes', 'rain_prob', 'rain_span', 'gust_kmh', 'heat_c', 'cold_c'].forEach((k) => { $(k).value = String(s[k]); });
+    const astro = kind === 'astro';
+    document.querySelectorAll('.wOnly').forEach((e) => e.classList.toggle('hidden', astro));
+    document.querySelectorAll('.aOnly').forEach((e) => e.classList.toggle('hidden', !astro));
+    tabs.hide('alerts', astro);
+    $('rainSpanRow').classList.toggle('hidden', astro || !(s.views || []).includes('rain'));
+    $('sunModeRow').classList.toggle('hidden', !astro || !defIfEmpty(s.views).includes('sun'));
+    // La de antes (una sola, en «star»): pasa a ser una vista más
+    if (astro && (s.views || []).includes('star')) {
+      settings.views = s.views.flatMap((v) => v !== 'star' ? [v] : (s.star ? ['star:' + s.star] : []));
+      delete settings.star; save(); show(); return;
+    }
+    $('sun_mode').value = s.sun_mode || 'events';
+    if (astro) showStars();
+    document.querySelectorAll('.rainOpt').forEach((e) => e.classList.toggle('hidden', !s.alert_rain));
+    document.querySelectorAll('.offOpt').forEach((e) => e.classList.toggle('hidden', !s.alert_official));
+    document.querySelectorAll('.calcOpt').forEach((e) => e.classList.toggle('hidden', !s.alert_calc));
+    $('alertSounds').innerHTML = ALERT_SOUNDS.map(([k, key]) => `<div class="row"><label for="${k}">${T(key)}</label><select id="${k}">${SOUNDS.map(([v, n]) => `<option value="${v}">${T(n)}</option>`).join('')}</select></div>`).join('');
+    ALERT_SOUNDS.forEach(([k]) => { $(k).value = s[k]; $(k).onchange = () => { settings[k] = $(k).value; save(); }; });
+    if (sources.length) showSources();
+    ['clock', 'date', 'weather'].forEach((k) => $(k).classList.toggle('hidden', k !== (kind === 'astro' ? 'weather' : kind)));
     document.querySelectorAll('.key').forEach((e) => e.classList.toggle('hidden', dial));
     document.querySelectorAll('.dial').forEach((e) => e.classList.toggle('hidden', !dial));
     document.querySelectorAll('.digital').forEach((e) => e.classList.toggle('hidden', dial || s.style !== 'digital'));
     document.querySelectorAll('.full').forEach((e) => e.classList.toggle('hidden', dial || s.style !== 'digital' || s.part !== 'full'));
     $('style').value = s.style; $('part').value = s.part; $('show_date').checked = s.show_date; $('seconds').checked = s.seconds;
-    ['click', 'double'].forEach((k) => { $(k).innerHTML = ACTS.map(([v, key]) => `<option value="${v}">${T(key)}</option>`).join(''); });
+    ['click', 'double'].forEach((k) => { $(k).innerHTML = acts().map(([v, key]) => `<option value="${v}">${T(key)}</option>`).join(''); });
     ['clock_click', 'clock_double'].forEach((k) => { $(k).innerHTML = CLOCK_ACTS.map(([v, key]) => `<option value="${v}">${T(key)}</option>`).join(''); $(k).value = s[k]; });
-    $('city').value = s.city ? (s.region ? `${s.city}, ${s.region}` : s.city) : ''; $('rotate_secs').value = String(s.rotate_secs); $('click').value = s.click; $('double').value = s.double;
+    $('city').value = s.city ? (s.region ? `${s.city}, ${s.region}` : s.city) : ''; $('rotate_secs').value = String(s.rotate_secs); ['click', 'double'].forEach((k) => { $(k).value = acts().some((a) => a[0] === s[k]) ? s[k] : 'none'; });
     $('cityNote').textContent = s.city ? '' : T('vacio_la_ciudad_del');
-    const list = VIEWS[dial ? 'dial' : 'key'], on = s.views.length ? s.views : ['now'];
-    $('views').innerHTML = list.map(([v, key]) => `<label><input type="checkbox" value="${v}" ${on.includes(v) ? 'checked' : ''}> ${T(key)}</label>`).join('');
-    $('views').querySelectorAll('input').forEach((c) => c.onchange = () => {
-      settings.views = [...$('views').querySelectorAll('input:checked')].map((x) => x.value);
-      save();
+    const list = groups().flatMap(([, l]) => l.filter((v) => v[2].includes(dial ? 'd' : 'k')));
+    const valid = list.map((v) => v[0]);
+    const on = defIfEmpty(s.views).filter((v) => valid.includes(v) || (astro && isStar(v)));
+    const nameOf = (id) => isStar(id) ? '★ ' + id.slice(5) : T((list.find((v) => v[0] === id) || [])[1] || id);
+    const setViews = (v) => { settings.views = v.length ? v : defViews(); save(); show(); };
+    // Las elegidas, en orden, para arrastrar
+    let from = null;
+    const box = $('viewOrder');
+    box.innerHTML = '';
+    on.forEach((id, i) => {
+      const d = document.createElement('div');
+      d.className = 'ord'; d.draggable = true;
+      d.innerHTML = `<span class="h">⋮⋮</span><span class="n">${i + 1}</span><span>${nameOf(id)}</span><button type="button" class="x" title="${T('quitar')}">✕</button>`;
+      d.querySelector('.x').onclick = () => setViews(on.filter((x) => x !== id));
+      d.ondragstart = () => { from = i; d.classList.add('drag'); };
+      d.ondragend = () => { from = null; box.querySelectorAll('.dropLine').forEach((l) => l.remove()); d.classList.remove('drag'); };
+      d.ondragover = (e) => {
+        e.preventDefault();
+        box.querySelectorAll('.dropLine').forEach((l) => l.remove());
+        const r = d.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2;
+        const line = document.createElement('div'); line.className = 'dropLine';
+        d.parentNode.insertBefore(line, after ? d.nextSibling : d);
+        d.dataset.to = String(after ? i + 1 : i);
+      };
+      d.ondrop = (e) => {
+        e.preventDefault();
+        let to = +d.dataset.to; const f = from;
+        if (f === null || to === f || to === f + 1) { show(); return; }
+        const v = on.slice(); const [m] = v.splice(f, 1); if (to > f) to--; v.splice(to, 0, m);
+        setViews(v);
+      };
+      box.appendChild(d);
     });
+    // Grupos con casillas: marcar añade al final, desmarcar la quita
+    $('views').innerHTML = groups().map(([g, l]) => {
+      const vs = l.filter((v) => v[2].includes(dial ? 'd' : 'k'));
+      return `<div class="grp"><b>${T(g)}</b><div class="checks">${vs.map(([v, key]) => `<label><input type="checkbox" value="${v}" ${on.includes(v) ? 'checked' : ''}> ${T(key)}</label>`).join('')}</div></div>`;
+    }).join('');
+    $('views').querySelectorAll('input').forEach((c) => c.onchange = () => setViews(c.checked ? on.concat(c.value) : on.filter((x) => x !== c.value)));
     $('wNote').textContent = dial
       ? T('con_varias_vistas_girar')
       : T('con_varias_vistas_siguiente');
@@ -119,17 +329,25 @@
     uuid = inUuid;
     const ai = typeof actionInfo === 'string' ? JSON.parse(actionInfo) : actionInfo;
     action = ai.action;
-    kind = { 'com.malzar.prisma.w.clock': 'clock', 'com.malzar.prisma.w.date': 'date', 'com.malzar.prisma.w.weather': 'weather' }[action] || '';
+    kind = { 'com.malzar.prisma.w.clock': 'clock', 'com.malzar.prisma.w.date': 'date', 'com.malzar.prisma.w.weather': 'weather', 'com.malzar.prisma.w.astro': 'astro' }[action] || '';
     dial = (ai.payload && ai.payload.controller) === 'Encoder';
     settings = Object.assign({}, ai.payload && ai.payload.settings);
     show();
-    PrismaSwipe.mount(ai, () => settings, save);
+    PrismaSwipe.mount(ai, () => settings, save, kind === 'weather' || kind === 'astro' ? $('touchPane') : null);
     ws = new WebSocket('ws://127.0.0.1:' + port);
-    ws.onopen = () => { ws.send(JSON.stringify({ event: registerEvent, uuid })); };
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ event: registerEvent, uuid }));
+      if (kind === 'astro') send({ request: 'stars' });
+      if (kind === 'weather') { $('srcNote').textContent = T('cargando_centros'); send({ request: 'alertSources', lat: settings.lat, lon: settings.lon }); }
+    };
     ws.onmessage = (m) => {
       const msg = JSON.parse(m.data);
       if (msg.event === 'didReceiveSettings' && msg.payload) { settings = Object.assign({}, msg.payload.settings); show(); }
+      if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.stars) { stars = msg.payload.stars; showStars(); }
       if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.places) places(msg.payload.places, msg.payload.q);
+      if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.alertSourcesError) { $('srcNote').textContent = msg.payload.alertSourcesError; $('srcDlRow').classList.remove('hidden'); }
+      if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.alertSources) { sources = msg.payload.alertSources; autoSource = msg.payload.auto || ''; showSources(); askStatus(); }
+      if (msg.event === 'sendToPropertyInspector' && msg.payload && 'alertStatus' in msg.payload) showStatus(msg.payload.alertStatus);
       if (msg.event === 'sendToPropertyInspector' && msg.payload && msg.payload.placesError) $('cityNote').textContent = msg.payload.placesError;
       if (msg.event === 'didReceiveSettings') PrismaSwipe.refresh();
     };

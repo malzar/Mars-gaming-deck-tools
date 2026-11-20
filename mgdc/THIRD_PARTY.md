@@ -24,7 +24,7 @@ Prisma es software libre con licencia GPL-3.0 (ver `LICENSE`). Aquí está todo 
 - **[mirajazz](https://github.com/4ndv/mirajazz)** (versión de [ambiso](https://github.com/ambiso/mirajazz)): MPL-2.0. Comunicación por USB con los decks.
 - **[openaction](https://github.com/OpenActionAPI/rust)**: MIT. Copia en `vendor/openaction` con un evento añadido («showSettingsInterface»).
 - **[StreamDock-Device-SDK](https://github.com/MiraboxSpace/StreamDock-Device-SDK)**, de Mirabox: referencia del protocolo para la imagen de fondo.
-- **Posición y fase de la luna:** fórmulas de [SunCalc](https://github.com/mourner/suncalc), reescritas en Rust en `src/astro.rs`. Licencia BSD de 2 cláusulas:
+- **Posición y fase de la luna, horas del sol:** fórmulas de [SunCalc](https://github.com/mourner/suncalc), reescritas en Rust en `src/astro.rs` y `src/sky/sun.rs`. Licencia BSD de 2 cláusulas:
 
   > Copyright (c) 2026, Volodymyr Agafonkin. All rights reserved.
   >
@@ -36,6 +36,9 @@ Prisma es software libre con licencia GPL-3.0 (ver `LICENSE`). Aquí está todo 
   > THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 - **Amanecer y puesta de sol:** la ecuación del amanecer estándar (`src/schedule.rs`), fórmulas astronómicas de dominio público.
+
+- **Posición de los planetas:** elementos orbitales y método de Paul Schlyter, [«How to compute planetary positions»](https://stjarnhimlen.se/comp/ppcomp.html) (dominio público), en `src/sky/planets.rs`.
+- **Estrellas:** [Yale Bright Star Catalog](http://tdc-www.harvard.edu/catalogs/bsc5.html), 5.ª ed. (Hoffleit y Warren, 1991; datos libres del NASA ADC), en `src/stars.rs`.
 
 ## Bibliotecas de Rust
 

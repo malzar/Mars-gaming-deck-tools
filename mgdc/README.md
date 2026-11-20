@@ -11,7 +11,7 @@
 
 Sustituye a los plugins *Ajazz AKP153 / Mirabox HSV293S* y *Ajazz AKP05 / Mirabox N4*. **No los tengas instalados a la vez**, porque se pelearían por los decks.
 
-> Estado: **0.9.0**. Novedades: nuevo nombre (Prisma), subperfiles y rueda de perfiles por niveles, hora, fecha y el tiempo (viento, UV, aire, polen, sol y luna) en teclas y ruedas, animaciones en las pantallas de las ruedas, final del cierre con logo o foto, reconexión automática del deck y textos en español e inglés.
+> Estado: **0.10.0**. Novedades: acción Astronomía (Sol con fases de luz, Luna, planetas y estrellas), Meteorología con lluvia prevista y avisos (oficiales y calculados, con sonido), rueda de música con el icono del programa que suena, cambio de salida de audio desde la rueda de volumen, deslizar en la pantalla táctil sobre una rueda, hora con agujas en tecla y ajustes ordenados en pestañas.
 
 ## Instalación
 

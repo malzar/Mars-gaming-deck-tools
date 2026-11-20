@@ -40,6 +40,17 @@ fn moon_coords(d: f64) -> (f64, f64, f64) {
     (right_ascension(lon, lat), declination(lon, lat), 385_001.0 - 20_905.0 * m.cos())
 }
 
+/// Dónde está la luna en el cielo: (ascensión recta, declinación) en
+/// radianes y distancia en km
+pub fn moon_radec(t: DateTime<Utc>) -> (f64, f64, f64) {
+    moon_coords(days(t))
+}
+
+/// Dónde está el sol en el cielo: (ascensión recta, declinación) en radianes
+pub fn sun_radec(t: DateTime<Utc>) -> (f64, f64) {
+    sun_coords(days(t))
+}
+
 /// Altura de la luna sobre el horizonte (grados)
 pub fn moon_altitude(t: DateTime<Utc>, lat: f64, lon: f64) -> f64 {
     let d = days(t);

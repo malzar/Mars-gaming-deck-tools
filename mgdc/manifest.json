@@ -2,7 +2,7 @@
   "Name": "Prisma",
   "Description": "Prisma, un plugin para controlarlos a todos: los decks Mars Gaming MSD-ONE (familia AKP153) y MSD-PRO (familia AKP05 / N4), y sus clones de Mirabox y Ajazz.",
   "Author": "Malzar",
-  "Version": "0.9.0",
+  "Version": "0.10.0",
   "PluginUUID": "com.malzar.prisma",
   "CodePathWin": "prisma.exe",
   "Icon": "assets/icon",
@@ -302,7 +302,7 @@
       }
     },
     {
-      "Name": "El tiempo",
+      "Name": "Meteorología",
       "UUID": "com.malzar.prisma.w.weather",
       "Tooltip": "El tiempo ahora y la previsión (Open-Meteo). Con varias vistas, la rueda pasa de una a otra",
       "Icon": "assets/actions/weather",
@@ -321,6 +321,33 @@
       "Encoder": {
         "layout": "layouts/audio-dial.json",
         "Icon": "assets/actions/weather",
+        "TriggerDescription": {
+          "Rotate": "Cambiar de vista",
+          "Push": "Click / doble click",
+          "Touch": "Click / doble click"
+        }
+      }
+    },
+    {
+      "Name": "Astronomía",
+      "UUID": "com.malzar.prisma.w.astro",
+      "Tooltip": "Sol, Luna, planetas y estrellas: si se ven, cuándo salen y se ponen. Con varias vistas, la rueda pasa de una a otra",
+      "Icon": "assets/actions/astro",
+      "PropertyInspectorPath": "pi/widgets.html",
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ],
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "assets/actions/astro",
+          "ShowTitle": false
+        }
+      ],
+      "Encoder": {
+        "layout": "layouts/audio-dial.json",
+        "Icon": "assets/actions/astro",
         "TriggerDescription": {
           "Rotate": "Cambiar de vista",
           "Push": "Click / doble click",

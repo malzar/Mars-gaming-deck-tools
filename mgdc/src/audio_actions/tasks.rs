@@ -8,7 +8,7 @@ use super::{
     render::{dial_moving, dial_song, music_view, render_dial_frame, render_key, render_music},
     settings::ActSettings,
     state::{INSTANCES, LEVELS, level_of, now_playing, now_playing_cached, send_bg},
-    worker::{MEDIA_THREAD, run_blocking, run_on},
+    worker::run_blocking,
 };
 use crate::audio::{self, Level, NowPlaying};
 
@@ -100,7 +100,7 @@ pub async fn player_task() {
         }
         let playing = np.as_ref().is_some_and(|n| n.playing);
         let eq_on = |s: &ActSettings, m: EqMode| {
-            playing && Bar::from_id(&s.bar).for_deck(s.small).uses_eq() && EqMode::from_id(&s.eq_mode) == m
+            playing && Bar::from_id(&s.bar).uses_eq() && EqMode::from_id(&s.eq_mode) == m
         };
         // Volumen real del programa que suena, y frecuencias, solo si alguien los usa
         let level = if items.iter().any(|(_, s)| eq_on(s, EqMode::Level)) {
@@ -124,7 +124,7 @@ pub async fn player_task() {
                     i.song = song;
                     i.since = std::time::Instant::now();
                 }
-                if Bar::from_id(&s.bar).for_deck(s.small).uses_eq() {
+                if Bar::from_id(&s.bar).uses_eq() {
                     i.eq = if playing {
                         player::next_eq(i.eq, EqMode::from_id(&s.eq_mode), level, tick)
                     } else {
@@ -133,14 +133,8 @@ pub async fn player_task() {
                 }
                 (i.since.elapsed().as_secs_f32(), i.eq)
             };
-            let gif = if look.bar.for_deck(s.small) == Bar::Gif && playing {
-                let (id, t) = (s.gif.clone(), t);
-                run_on(&MEDIA_THREAD, move || player::gif_frame(&id, t)).await.flatten()
-            } else {
-                None
-            };
             let moving = player::moving(np.as_ref(), &look);
-            let frame = if moving { Frame { t, eq, gif: gif.as_deref() } } else { Frame::still() };
+            let frame = if moving { Frame { t, eq } } else { Frame::still() };
             let svg = player::render(np.as_ref(), &look, &frame, false);
             let changed = match INSTANCES.lock().await.get_mut(&context) {
                 Some(i) if !i.animating && i.last != svg => {
@@ -179,7 +173,7 @@ async fn player_music(dials: Vec<(String, ActSettings)>, np: Option<&NowPlaying>
             i.eq = player::next_eq(i.eq, EqMode::from_id(&s.eq_mode), peak, tick);
             (i.since.elapsed().as_secs_f32(), i.eq)
         };
-        let svg = render_music(&s, np, &player::Frame { t, eq, gif: None });
+        let svg = render_music(&s, np, &player::Frame { t, eq });
         let changed = match INSTANCES.lock().await.get_mut(&context) {
             Some(i) if !i.animating && i.last != svg => {
                 i.last = svg.clone();
@@ -221,7 +215,7 @@ pub(super) async fn player_dials(dials: Vec<(String, ActSettings)>, np: Option<&
             i.eq = if playing { player::next_eq(i.eq, EqMode::from_id(&s.eq_mode), peak, tick) } else { [0.0; player::EQ_BARS] };
             (i.since.elapsed().as_secs_f32(), i.eq)
         };
-        let svg = render_dial_frame(&s, level, np, None, &player::Frame { t, eq, gif: None });
+        let svg = render_dial_frame(&s, level, np, None, &player::Frame { t, eq });
         let changed = match INSTANCES.lock().await.get_mut(&context) {
             Some(i) if !i.animating && i.last != svg => {
                 i.last = svg.clone();

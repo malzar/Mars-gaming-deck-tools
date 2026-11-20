@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 /// Los de serie, en el orden en que salen en la lista
-pub const BUILTIN: [&str; 8] = ["campana", "digital", "marimba", "alarma", "suave", "cucaracha", "trombon", "boing"];
+pub const BUILTIN: [&str; 13] = ["campana", "digital", "marimba", "alarma", "suave", "cucaracha", "trombon", "boing", "lluvia", "sarten", "viento", "trueno", "ventisca"];
 /// Los propios van como "custom:<fichero>"
 const CUSTOM: &str = "custom:";
 /// Tamaño máximo de un sonido propio

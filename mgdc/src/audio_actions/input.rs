@@ -114,7 +114,7 @@ pub(super) async fn rotate(context: String, s: ActSettings, ticks: i16) {
             Some(i) => (i.since.elapsed().as_secs_f32(), i.eq),
             None => (0.0, [0.0; crate::player::EQ_BARS]),
         };
-        let frame = if dial_moving(&s, after, np.as_ref()) { crate::player::Frame { t, eq, gif: None } } else { crate::player::Frame::still() };
+        let frame = if dial_moving(&s, after, np.as_ref()) { crate::player::Frame { t, eq } } else { crate::player::Frame::still() };
         send_bg(&context, Kind::Dial, &render_dial_frame(&s, after, np.as_ref(), None, &frame)).await;
     }
     set_animating(&context, false).await;

@@ -17,6 +17,12 @@
 </style>
 </head>
 <body>
+  <div class="tabs">
+    <button type="button" data-tab="config" data-i18n="pest_config">Configuración</button>
+    <button type="button" data-tab="look" data-i18n="pest_aspecto">Aspecto</button>
+    <button type="button" data-tab="touch" class="dialOnly" data-i18n="pest_tactil">Pantalla táctil</button>
+  </div>
+  <div data-pane="config">
   <div class="row hidden" id="targetRow">
     <label for="target" data-i18n="volumen_de">Volumen de</label>
     <div class="inline">
@@ -44,6 +50,10 @@
     <label class="inline"><input type="checkbox" id="showTitle"> <span id="titleText" data-i18n="mostrar_el_titulo">Mostrar el título</span></label>
   </div>
 
+  <p class="note" id="note"></p>
+
+  </div>
+  <div data-pane="look">
   <div class="row hidden" id="barRow">
     <label for="bar" data-i18n="barra">Barra</label>
     <select id="bar">
@@ -52,7 +62,6 @@
       <option value="waves" data-i18n="ondas">Ondas</option>
       <option value="eq" data-i18n="ecualizador">Ecualizador</option>
       <option value="eqbg" data-i18n="ecualizador_de_fondo">Ecualizador de fondo</option>
-      <option value="gif" data-big data-i18n="gif_propio">GIF propio</option>
     </select>
   </div>
   <div class="row hidden" id="dialRow">
@@ -90,20 +99,13 @@
       <option value="level" data-i18n="con_el_volumen_real">Con el volumen real</option>
     </select>
   </div>
-  <div class="row hidden" id="gifRow">
-    <label data-i18n="gif">GIF</label>
-    <div class="inline">
-      <button id="gifPick" data-i18n="elegir_gif">Elegir GIF…</button>
-      <span id="gifState" class="note" style="margin:0"></span>
-      <input type="file" id="gifFile" accept="image/gif" class="hidden">
-    </div>
+  <p class="note hidden" id="smallNote" data-i18n="deck_lento">En este deck lo que se mueve va a la mitad de fotogramas: aguanta pocos cambios por segundo.</p>
+
   </div>
-  <p class="note hidden" id="smallNote" data-i18n="en_el_msd_one">En el MSD-ONE no hay GIF y lo que se mueve va a la mitad de fotogramas: el deck aguanta pocos cambios por segundo.</p>
-
-  <p class="note" id="note"></p>
-
+  <div data-pane="touch" id="touchPane"></div>
 <script src="i18n.js"></script>
 <script src="swipe.js"></script>
+<script src="tabs.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   let ws = null, uuid = '', action = '', settings = {}, apps = [], small = false;
@@ -148,9 +150,7 @@
     $('titleRow').classList.toggle('hidden', !titleOk);
     // Barra de abajo (solo con lo que suena en Reproducir/Pausa)
     const barOk = k === 'playpause' && (settings.show_title ?? true);
-    document.querySelectorAll('#bar [data-big]').forEach((o) => { o.hidden = small; o.disabled = small; });
     let bar = settings.bar || 'color';
-    if (small && bar === 'gif') bar = 'color';
     $('bar').value = bar;
     $('barRow').classList.toggle('hidden', !barOk);
     // Rueda: estilo de la pantalla (con ecualizador o no)
@@ -174,16 +174,20 @@
     const dialEq = dialK && dialStyle !== 'bar';
     $('colorRow').classList.toggle('hidden', !dialEq && (!barOk || !['color', 'waves', 'eq', 'eqbg'].includes(bar)));
     $('eqRow').classList.toggle('hidden', !dialEq && (!barOk || !['eq', 'eqbg'].includes(bar)));
-    $('gifRow').classList.toggle('hidden', !barOk || bar !== 'gif');
     $('smallNote').classList.toggle('hidden', !barOk || !small);
     $('barColor').value = settings.bar_color || '#2ecc71';
     $('eqMode').value = settings.eq_mode || 'level';
-    if (!$('gifState').dataset.busy) $('gifState').textContent = settings.gif ? T('gif_guardado') : T('sin_gif');
     $('titleText').textContent = k === 'dial' ? T('mostrar_el_titulo_y') : T('mostrar_el_titulo_en');
     $('step').value = settings.step ?? 2;
     $('showTitle').checked = settings.showTitle ?? settings.show_title ?? true;
     $('note').textContent = {
-      playpause: T('manda_la_orden_al'),
+      playpause: T('pulsar_playpause') + ' ' + T('manda_la_orden_al'),
+      stop: T('pulsar_stop'),
+      prev: T('pulsar_prev'),
+      next: T('pulsar_next'),
+      volup: T('pulsar_volup'),
+      voldown: T('pulsar_voldown'),
+      mute: T('pulsar_mute'),
       dial: T('gira_para_cambiar_el'),
       music: T('gira_para_pasar_de_pista'),
     }[k] || '';
@@ -217,15 +221,6 @@
   $('bar').onchange = () => { settings.bar = $('bar').value; save(); update(); };
   $('barColor').oninput = () => { settings.bar_color = $('barColor').value; save(); };
   $('eqMode').onchange = () => { settings.eq_mode = $('eqMode').value; save(); };
-  $('gifPick').onclick = () => $('gifFile').click();
-  $('gifFile').onchange = (e) => {
-    const f = e.target.files[0]; e.target.value = '';
-    if (!f) return;
-    $('gifState').dataset.busy = '1'; $('gifState').textContent = T('guardando');
-    const r = new FileReader();
-    r.onload = () => send('sendToPlugin', { request: 'gif', data: r.result });
-    r.readAsDataURL(f);
-  };
   $('showTitle').onchange = () => { settings.show_title = $('showTitle').checked; delete settings.showTitle; save(); update(); };
 
   // Lo llama OpenDeck al abrir la ventana de ajustes
@@ -234,10 +229,15 @@
     uuid = inUuid;
     const ai = typeof actionInfo === 'string' ? JSON.parse(actionInfo) : actionInfo;
     action = ai.action;
-    settings = Object.assign({ target: 'general', step: 2, show_title: true, bar: 'color', bar_color: '#2ecc71', eq_mode: 'level', gif: '', dial_style: 'bar', app_icon: 'state', app_icon_side: 'left' }, ai.payload && ai.payload.settings);
+    settings = Object.assign({ target: 'general', step: 2, show_title: true, bar: 'color', bar_color: '#2ecc71', eq_mode: 'level', dial_style: 'bar', app_icon: 'state', app_icon_side: 'left' }, ai.payload && ai.payload.settings);
     renderTargets(); update();
     // Deslizar en la pantalla: en la rueda de música (en la de volumen chocaría con el doble click)
-    if (kind() === 'music') PrismaSwipe.mount(ai, () => settings, save);
+    // Pestañas: «Pantalla táctil» solo en la rueda de música (en la de
+    // volumen el doble click es para la salida de audio)
+    const tabs = PrismaTabs(document.body, 'audio-' + kind());
+    tabs.setDial((ai.payload && ai.payload.controller) === 'Encoder');
+    tabs.hide('touch', kind() !== 'music');
+    if (kind() === 'music') PrismaSwipe.mount(ai, () => settings, save, $('touchPane'), { onlySame: true });
     ws = new WebSocket('ws://127.0.0.1:' + port);
     ws.onopen = () => {
       ws.send(JSON.stringify({ event: registerEvent, uuid }));
@@ -249,8 +249,6 @@
       const p = msg.event === 'sendToPropertyInspector' ? msg.payload || {} : null;
       if (p && p.apps) { apps = p.apps; renderTargets(); update(); }
       if (p && 'small' in p) { small = !!p.small; update(); }
-      if (p && p.gif) { settings.gif = p.gif; settings.bar = 'gif'; save(); delete $('gifState').dataset.busy; update(); }
-      if (p && p.gifError) { delete $('gifState').dataset.busy; $('gifState').textContent = p.gifError; }
       if (msg.event === 'didReceiveSettings' && msg.payload) {
         settings = Object.assign(settings, msg.payload.settings); renderTargets(); update(); PrismaSwipe.refresh();
       }

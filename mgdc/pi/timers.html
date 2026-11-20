@@ -17,6 +17,13 @@
 </style>
 </head>
 <body>
+  <div class="tabs">
+    <button type="button" data-tab="config" data-i18n="pest_config">Configuración</button>
+    <button type="button" data-tab="sound" data-i18n="pest_sonido">Sonido</button>
+    <button type="button" data-tab="press" data-i18n="pest_pulsar">Pulsar</button>
+    <button type="button" data-tab="touch" class="dialOnly" data-i18n="pest_tactil">Pantalla táctil</button>
+  </div>
+  <div data-pane="config">
   <!-- Temporizador -->
   <div id="timer" class="hidden">
     <div class="row"><label for="mode" data-i18n="t_mode">Modo</label><select id="mode"><option value="timer" data-i18n="t_mode_timer">Temporizador (cuenta atrás)</option><option value="stopwatch" data-i18n="t_mode_stopwatch">Cronómetro</option></select></div>
@@ -35,23 +42,30 @@
     <div class="row"><label></label><label><input type="checkbox" id="auto_next"> <span data-i18n="t_auto">Empezar sola la fase siguiente</span></label></div>
   </div>
 
+  </div>
+  <div data-pane="sound">
   <div class="row" id="soundCheck"><label></label><label><input type="checkbox" id="sound"> <span data-i18n="t_sound">Sonar al acabar</span></label></div>
   <div class="row" id="soundRow"><label for="sound_id" data-i18n="t_sound_which">Sonido</label>
     <div class="pair"><select id="sound_id"></select><button id="play" data-i18n="t_play">Probar</button></div></div>
   <input type="file" id="soundFile" accept=".wav,audio/wav" class="hidden">
   <p class="note hidden" id="soundNote"></p>
+  </div>
+  <div data-pane="press">
   <div class="row"><label for="click" data-i18n="t_click">Click</label><select id="click"></select></div>
   <div class="row"><label for="double" data-i18n="t_double">Doble click</label><select id="double"></select></div>
   <p class="note" id="note"></p>
   <p class="note" data-i18n="t_end_note">Al acabar, la tecla parpadea; pulsarla lo para. Sigue contando aunque cambies de perfil.</p>
+  </div>
+  <div data-pane="touch" id="touchPane"></div>
 <script src="i18n.js"></script>
 <script src="swipe.js"></script>
+<script src="tabs.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
-  let ws = null, uuid = '', action = '', settings = {}, dial = false, kind = '';
+  let ws = null, uuid = '', action = '', settings = {}, dial = false, kind = '', tabs = null;
   const DEF = { mode: 'timer', style: 'digital', hundredths: false, minutes: 5, seconds: 0, work: 25, short_break: 5, long_break: 15, rounds: 4, auto_next: true, sound: true, sound_id: 'campana' };
   // Sonidos: los cinco de serie (assets/sounds), el de Windows y uno propio
-  const SOUNDS = [['campana', 't_snd_bell'], ['digital', 't_snd_digital'], ['marimba', 't_snd_marimba'], ['alarma', 't_snd_alarm'], ['suave', 't_snd_soft'], ['cucaracha', 't_snd_cucaracha'], ['trombon', 't_snd_trombone'], ['boing', 't_snd_boing'], ['system', 't_snd_system']];
+  const SOUNDS = [['campana', 't_snd_bell'], ['digital', 't_snd_digital'], ['marimba', 't_snd_marimba'], ['alarma', 't_snd_alarm'], ['suave', 't_snd_soft'], ['cucaracha', 't_snd_cucaracha'], ['trombon', 't_snd_trombone'], ['boing', 't_snd_boing'], ['lluvia', 't_snd_lluvia'], ['sarten', 't_snd_sarten'], ['viento', 't_snd_viento'], ['trueno', 't_snd_trueno'], ['ventisca', 't_snd_ventisca'], ['system', 't_snd_system']];
   const send = (payload) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event: 'sendToPlugin', context: uuid, action, payload })); };
   // Textos por clave (locales/<idioma>.json, sección pi): se traducen al pintarlos
   const ACTS = [['toggle', 't_toggle'], ['reset', 't_reset'], ['skip', 't_skip'], ['edit', 't_edit'], ['none', 't_none']];
@@ -85,6 +99,7 @@
     ['minutes', 'seconds', 'work', 'short_break', 'long_break', 'rounds'].forEach((id) => { $(id).value = s[id]; });
     $('mode').value = s.mode; $('style').value = s.style; $('hundredths').checked = s.hundredths;
     $('hundredthsRow').classList.toggle('hidden', !stopwatch());
+    if (tabs) tabs.hide('sound', stopwatch());
     // Las agujas solo en las teclas
     $('styleRow').classList.toggle('hidden', dial);
     // El cronómetro no tiene tiempo ni final (ni sonido)
@@ -115,7 +130,10 @@
     dial = (ai.payload && ai.payload.controller) === 'Encoder';
     settings = Object.assign({}, ai.payload && ai.payload.settings);
     show();
-    PrismaSwipe.mount(ai, () => settings, save);
+    tabs = PrismaTabs(document.body, 'timers');
+    tabs.setDial(dial);
+    tabs.hide('sound', stopwatch());
+    PrismaSwipe.mount(ai, () => settings, save, $('touchPane'));
     ws = new WebSocket('ws://127.0.0.1:' + port);
     ws.onopen = () => { ws.send(JSON.stringify({ event: registerEvent, uuid })); };
     ws.onmessage = (m) => {

@@ -4,13 +4,21 @@ use std::{collections::HashMap, time::Duration};
 
 use serde::Deserialize;
 
-use super::{Air, Day, Hour, Weather};
+use super::{Air, Day, Hour, Quarter, Weather};
 
 #[derive(Deserialize)]
 struct Raw {
     current: RawCurrent,
     hourly: RawHourly,
     daily: RawDaily,
+    #[serde(default)]
+    minutely_15: Option<RawQuarters>,
+}
+
+#[derive(Deserialize)]
+struct RawQuarters {
+    time: Vec<String>,
+    precipitation: Vec<Option<f32>>,
 }
 
 #[derive(Deserialize)]
@@ -35,6 +43,10 @@ struct RawHourly {
     temperature_2m: Vec<Option<f32>>,
     weather_code: Vec<Option<u8>>,
     precipitation_probability: Vec<Option<u8>>,
+    #[serde(default)]
+    wind_gusts_10m: Vec<Option<f32>>,
+    #[serde(default)]
+    precipitation: Vec<Option<f32>>,
 }
 
 #[derive(Deserialize)]
@@ -76,9 +88,23 @@ pub fn parse(json: &str) -> Result<Weather, String> {
             temp: r.hourly.temperature_2m.get(i).copied().flatten().unwrap_or(0.0),
             code: r.hourly.weather_code.get(i).copied().flatten().unwrap_or(0),
             rain: r.hourly.precipitation_probability.get(i).copied().flatten().unwrap_or(0),
+            gusts: r.hourly.wind_gusts_10m.get(i).copied().flatten().unwrap_or(0.0),
+            mm: r.hourly.precipitation.get(i).copied().flatten().unwrap_or(0.0),
         })
-        .take(24)
+        .take(49)
         .collect();
+    // Lluvia cada 15 minutos desde el cuarto de hora actual (próximas 2 h)
+    let quarters = r
+        .minutely_15
+        .map(|q| {
+            let now = r.current.time.as_str();
+            let start = q.time.iter().rposition(|t| t.as_str() <= now).unwrap_or(0);
+            (start..q.time.len())
+                .map(|i| Quarter { time: q.time[i].clone(), mm: q.precipitation.get(i).copied().flatten().unwrap_or(0.0) })
+                .take(8)
+                .collect()
+        })
+        .unwrap_or_default();
     Ok(Weather {
         temp: r.current.temperature_2m,
         code: r.current.weather_code,
@@ -91,6 +117,7 @@ pub fn parse(json: &str) -> Result<Weather, String> {
         air: None,
         days,
         hours,
+        quarters,
     })
 }
 
@@ -121,7 +148,8 @@ fn url(lat: f64, lon: f64) -> String {
     format!(
         "https://api.open-meteo.com/v1/forecast?latitude={lat:.4}&longitude={lon:.4}\
          &current=temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index\
-         &hourly=temperature_2m,weather_code,precipitation_probability\
+         &hourly=temperature_2m,weather_code,precipitation_probability,wind_gusts_10m,precipitation\
+         &minutely_15=precipitation&forecast_minutely_15=24\
          &daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset\
          &timezone=auto&forecast_days=5"
     )
@@ -184,6 +212,10 @@ mod tests {
         // Las horas empiezan en la actual
         assert_eq!(w.hours.len(), 2);
         assert_eq!(w.hours[0].time, "2026-11-16T19:00");
+        assert!(w.quarters.is_empty());
+        let q = parse(&SAMPLE.replace(r#""daily""#, r#""minutely_15":{"time":["2026-11-16T19:15","2026-11-16T19:30","2026-11-16T19:45"],"precipitation":[0.0,0.0,0.4]},"daily""#)).unwrap();
+        assert_eq!(q.quarters.len(), 2);
+        assert_eq!(q.quarters[1].mm, 0.4);
         let a = parse_air(r#"{"current":{"time":"2026-11-16T19:00","european_aqi":27,"pm10":12.5,"pm2_5":7.1,"grass_pollen":34.0,"olive_pollen":2.0,"birch_pollen":null,"alder_pollen":0.0,"mugwort_pollen":0.0,"ragweed_pollen":6.0}}"#).unwrap();
         assert_eq!(a.aqi, Some(27.0));
         assert!(a.has_pollen);

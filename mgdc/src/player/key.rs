@@ -17,14 +17,14 @@ pub fn needs_marquee(np: &NowPlaying, _small: bool) -> bool {
 
 /// Si la tecla tiene algo que se mueve ahora mismo
 pub fn moving(np: Option<&NowPlaying>, look: &Look) -> bool {
-    np.is_some_and(|n| n.playing && (look.bar.for_deck(look.small).animated() || needs_marquee(n, look.small)))
+    np.is_some_and(|n| n.playing && (look.bar.animated() || needs_marquee(n, look.small)))
 }
 
 // ------------------------------------------------------------------ barras --
 
 fn bar_svg(look: &Look, f: &Frame) -> String {
     let c = esc(look.color);
-    match look.bar.for_deck(look.small) {
+    match look.bar {
         Bar::None => String::new(),
         Bar::Color => format!(r##"<rect y="134" width="144" height="10" fill="{c}"/>"##),
         Bar::Waves => (0..15)
@@ -53,16 +53,12 @@ fn bar_svg(look: &Look, f: &Frame) -> String {
             .collect(),
         // Se dibuja de fondo, antes que el texto (ver `background_svg`)
         Bar::EqBackground => String::new(),
-        Bar::Gif => match f.gif {
-            Some(png) => format!(r##"<image x="0" y="128" width="144" height="16" preserveAspectRatio="none" href="data:image/png;base64,{png}"/>"##),
-            None => format!(r##"<rect y="134" width="144" height="10" fill="{c}"/>"##),
-        },
     }
 }
 
 /// Alto que ocupa la barra abajo (lo que queda libre para el texto)
 fn bar_height(look: &Look) -> f32 {
-    match look.bar.for_deck(look.small) {
+    match look.bar {
         Bar::None => 0.0,
         Bar::Eq => 36.0,
         Bar::EqBackground => 0.0,
@@ -72,7 +68,7 @@ fn bar_height(look: &Look) -> f32 {
 
 /// Ecualizador de fondo: barras altas y suaves que ocupan toda la tecla
 fn background_svg(look: &Look, f: &Frame) -> String {
-    if look.bar.for_deck(look.small) != Bar::EqBackground {
+    if look.bar != Bar::EqBackground {
         return String::new();
     }
     let c = esc(look.color);
@@ -182,9 +178,6 @@ mod tests {
 
     #[test]
     fn deck_pequeno() {
-        assert_eq!(Bar::Eq.for_deck(true), Bar::Eq);
-        assert_eq!(Bar::Gif.for_deck(true), Bar::Color);
-        assert_eq!(Bar::Waves.for_deck(true), Bar::Waves);
         let look = Look { bar: Bar::Eq, color: "#2ecc71", small: false };
         assert!(moving(Some(&np("Hola", true)), &look));
         assert!(!moving(Some(&np("Hola", false)), &look));
@@ -200,7 +193,7 @@ fn muestras_tecla() {
     let np = |t: &str, a: &str, p: bool| NowPlaying { title: t.into(), artist: a.into(), playing: p, ..Default::default() };
     let look = |bar, small| Look { bar, color: "#2ecc71", small };
     let eq = [0.3, 0.7, 1.0, 0.5, 0.8, 0.2, 0.6, 0.45, 0.9, 0.35, 0.75, 0.55];
-    let fr = |t| Frame { t, eq, gif: None };
+    let fr = |t| Frame { t, eq };
     let s = [
         ("1-nada", render(Some(&np("Bohemian Rhapsody", "Queen", true)), &look(Bar::None, false), &fr(0.0), false)),
         ("2-color", render(Some(&np("Bohemian Rhapsody", "Queen", true)), &look(Bar::Color, false), &fr(0.0), false)),

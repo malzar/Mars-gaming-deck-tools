@@ -58,6 +58,8 @@ mod reveal;
 mod schedule;
 mod settings;
 mod sounds;
+mod sky;
+mod stars;
 mod svg;
 mod touch;
 mod timers;
@@ -102,6 +104,7 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
         tracker.spawn(profile_keys::watch_task());
         // Hora, fecha y tiempo
         tracker.spawn(widgets::tick_task());
+        tracker.spawn(weather::preload_sources());
         tracker.spawn(timers::tick_task());
         // Recuerda la última ventana de reproductor activa (método automático)
         media::start_tracking();

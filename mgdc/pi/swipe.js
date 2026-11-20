@@ -13,7 +13,8 @@ window.PrismaSwipe = (function () {
 
   function show() {
     if (!box) return;
-    const s = get(), mode = s.swipe || 'off';
+    const s = get();
+    const mode = s.swipe === 'other' && !$('swipe').querySelector('[value="other"]') ? 'same' : (s.swipe || 'off');
     $('swipe').value = mode;
     $('swipe_action').value = ACTIONS.includes(s.swipe_action) ? s.swipe_action : 'track';
     $('swipe_invert').checked = !!s.swipe_invert;
@@ -24,18 +25,22 @@ window.PrismaSwipe = (function () {
 
   function set(key, value) { get()[key] = value; save(); show(); }
 
-  // `ai`: el actionInfo de OpenDeck (solo se monta en ruedas)
-  function mount(ai, getSettings, saveSettings) {
+  // `ai`: el actionInfo de OpenDeck (solo se monta en ruedas); `into`: dónde
+  // (si no, al final de la ventana)
+  // `opts.onlySame`: sin «Otra cosa» (donde sería lo mismo que girar)
+  function mount(ai, getSettings, saveSettings, into, opts) {
+    const onlySame = !!(opts && opts.onlySame);
     if (box || (ai.payload && ai.payload.controller) !== 'Encoder') return;
     get = getSettings; save = saveSettings;
     box = document.createElement('div');
     box.innerHTML =
-      `<p class="note" style="border-top:1px solid var(--border);padding-top:8px;margin-top:12px">${T('sw_title')}</p>` +
-      row(T('sw_mode'), `<select id="swipe">${opt('off', 'sw_off')}${opt('same', 'sw_same')}${opt('other', 'sw_other')}</select>`) +
+      // Dentro de su pestaña ya se sabe que es la pantalla táctil: solo una raya
+      (into ? '<div style="border-top:1px solid var(--border);margin:12px 0 10px"></div>' : `<p class="note" style="border-top:1px solid var(--border);padding-top:8px;margin-top:12px">${T('sw_title')}</p>`) +
+      row(T('sw_mode'), `<select id="swipe">${opt('off', 'sw_off')}${opt('same', 'sw_same')}${onlySame ? '' : opt('other', 'sw_other')}</select>`) +
       `<div id="swipeActRow">${row(T('sw_action'), `<select id="swipe_action">${opt('track', 'sw_track')}</select>`)}</div>` +
       `<div id="swipeInvRow">${row('', `<label><input type="checkbox" id="swipe_invert"> ${T('sw_invert')}</label>`)}</div>` +
       `<p class="note" id="swipeNote"></p>`;
-    document.body.appendChild(box);
+    (into || document.body).appendChild(box);
     $('swipe').onchange = (e) => set('swipe', e.target.value);
     $('swipe_action').onchange = (e) => set('swipe_action', e.target.value);
     $('swipe_invert').onchange = (e) => set('swipe_invert', e.target.checked);

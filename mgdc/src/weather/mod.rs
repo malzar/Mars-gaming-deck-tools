@@ -7,12 +7,14 @@
 //! - `places`: buscar localidades por nombre
 //! - `levels`: niveles de UV, aire y polen y la dirección del viento
 //! - `icons`: los iconos del tiempo
+//! - `warnings`: avisos oficiales (amarillo, naranja, rojo) del organismo de cada país
 
 mod cache;
 mod icons;
 mod levels;
 mod open_meteo;
 mod places;
+mod warnings;
 
 pub use cache::get;
 pub use icons::icon;
@@ -21,6 +23,7 @@ pub use open_meteo::web_url;
 #[cfg(test)]
 pub use open_meteo::{parse, parse_air};
 pub use places::search_places;
+pub use warnings::{Hazard, Level, Warning, nearest_source, official, preload_sources, reload_sources, status as alert_status};
 
 #[derive(Debug, Clone, Default)]
 pub struct Day {
@@ -44,9 +47,21 @@ pub struct Hour {
     pub time: String,
     pub temp: f32,
     pub code: u8,
-    /// Para el aviso de lluvia
-    #[allow(dead_code)]
+    /// Probabilidad de lluvia (%)
     pub rain: u8,
+    /// Rachas de viento (km/h)
+    pub gusts: f32,
+    /// Lluvia prevista en esa hora (l/m²)
+    pub mm: f32,
+}
+
+/// Lluvia prevista en un cuarto de hora
+#[derive(Debug, Clone, Default)]
+pub struct Quarter {
+    /// "2026-11-16T19:15"
+    pub time: String,
+    /// Litros por m² en ese cuarto de hora
+    pub mm: f32,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -67,6 +82,8 @@ pub struct Weather {
     pub days: Vec<Day>,
     /// Desde la hora actual en adelante
     pub hours: Vec<Hour>,
+    /// Lluvia cada 15 minutos, desde ahora (unas 6 horas)
+    pub quarters: Vec<Quarter>,
 }
 
 /// Calidad del aire y polen (Open-Meteo, servicio de calidad del aire)

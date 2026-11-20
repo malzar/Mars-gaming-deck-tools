@@ -18,8 +18,6 @@ pub struct ActSettings {
     pub bar: String,
     pub bar_color: String,
     pub eq_mode: String,
-    /// Nombre del GIF propio de la barra
-    pub gif: String,
     /// Rueda: "bar" (barra), "eq" (ecualizador en lugar de la barra) o "eqbg" (de fondo)
     pub dial_style: String,
     /// Rueda de música: icono del programa que suena: "none", "state" (junto
@@ -41,7 +39,6 @@ impl Default for ActSettings {
             bar: "color".into(),
             bar_color: "#2ecc71".into(),
             eq_mode: "level".into(),
-            gif: String::new(),
             dial_style: "bar".into(),
             app_icon: "state".into(),
             app_icon_side: "left".into(),

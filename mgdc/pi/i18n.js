@@ -41,6 +41,7 @@
   window.prismaLang = (info) => {
     let code = '';
     try { code = (typeof info === 'string' ? JSON.parse(info) : info).application.language; } catch (e) { /* sin idioma: el del sistema */ }
+    window.prismaLangCode = code;
     load(code);
     apply();
   };

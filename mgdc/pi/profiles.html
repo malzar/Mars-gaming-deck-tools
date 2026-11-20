@@ -10,32 +10,42 @@
   .row > label:first-child { color: var(--muted); }
   select { width: 100%; height: 28px; padding: 0 6px; background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font: inherit; }
   .note { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
-  h4 { margin: 14px 0 8px; font-size: 12px; font-weight: 600; color: var(--text); }
 </style>
 </head>
 <body>
-  <div class="row">
-    <label for="mode" data-i18n="al_girar">Al girar</label>
-    <select id="mode">
-      <option value="press" data-i18n="elegir_y_pulsar_para">Elegir y pulsar para cambiar</option>
-      <option value="direct" data-i18n="cambiar_al_girar">Cambiar al girar</option>
-    </select>
+  <div class="tabs">
+    <button type="button" data-tab="turn" data-i18n="pest_girar">Girar</button>
+    <button type="button" data-tab="press" data-i18n="pest_pulsar">Pulsar</button>
+    <button type="button" data-tab="touch" data-i18n="pest_tactil">Pantalla táctil</button>
+    <button type="button" data-tab="help" data-i18n="pest_ayuda">Ayuda</button>
   </div>
-  <p class="note" id="modeNote"></p>
-
-  <h4 data-i18n="pulsador_de_la_rueda">Pulsador de la rueda</h4>
-  <div class="row"><label for="click" data-i18n="click">Click</label><select id="click" data-k="click"></select></div>
-  <div class="row"><label for="double" data-i18n="doble_click">Doble click</label><select id="double" data-k="double"></select></div>
-
-  <h4 data-i18n="pantalla_encima_de_esta">Pantalla (encima de esta rueda)</h4>
-  <div class="row"><label for="tap" data-i18n="toque">Toque</label><select id="tap" data-k="tap"></select></div>
-  <div class="row"><label for="doubleTap" data-i18n="doble_toque">Doble toque</label><select id="doubleTap" data-k="doubleTap"></select></div>
-  <p class="note" data-i18n="deslizar_el_dedo_por">Deslizar el dedo por la pantalla a izquierda o derecha es como girar la rueda.</p>
-  <p class="note" data-i18n="si_el_doble_no">Si el doble no hace nada, el click o el toque actúan al momento; si no, esperan un instante por si llega el segundo.</p>
-  <p class="note" data-i18n="el_icono_de_cada">El icono de cada perfil y el color del marco del activo se ponen en el panel de Prisma, pestaña «Perfiles».</p>
-  <p class="note" data-i18n="la_rueda_recorre_en">La rueda recorre, en su orden, los «Switch Profile» de la fila de teclas virtuales que sale en el editor debajo de las ruedas. Prisma añade los que falten al arrancar OpenDeck y al crear un perfil desde el panel.</p>
+  <div data-pane="turn">
+    <div class="row">
+      <label for="mode" data-i18n="al_girar">Al girar</label>
+      <select id="mode">
+        <option value="press" data-i18n="elegir_y_pulsar_para">Elegir y pulsar para cambiar</option>
+        <option value="direct" data-i18n="cambiar_al_girar">Cambiar al girar</option>
+      </select>
+    </div>
+    <p class="note" id="modeNote"></p>
+  </div>
+  <div data-pane="press">
+    <div class="row"><label for="click" data-i18n="click">Click</label><select id="click" data-k="click"></select></div>
+    <div class="row"><label for="double" data-i18n="doble_click">Doble click</label><select id="double" data-k="double"></select></div>
+    <p class="note" data-i18n="si_el_doble_no">Si el doble no hace nada, el click o el toque actúan al momento; si no, esperan un instante por si llega el segundo.</p>
+  </div>
+  <div data-pane="touch" id="touchPane">
+    <div class="row"><label for="tap" data-i18n="toque">Toque</label><select id="tap" data-k="tap"></select></div>
+    <div class="row"><label for="doubleTap" data-i18n="doble_toque">Doble toque</label><select id="doubleTap" data-k="doubleTap"></select></div>
+    <p class="note" data-i18n="deslizar_el_dedo_por">Deslizar el dedo por la pantalla a izquierda o derecha es como girar la rueda.</p>
+  </div>
+  <div data-pane="help">
+    <p class="note" data-i18n="el_icono_de_cada">El icono de cada perfil y el color del marco del activo se ponen en el panel de Prisma, pestaña «Perfiles».</p>
+    <p class="note" data-i18n="la_rueda_recorre_en">La rueda recorre, en su orden, los «Switch Profile» de la fila de teclas virtuales que sale en el editor debajo de las ruedas. Prisma añade los que falten al arrancar OpenDeck y al crear un perfil desde el panel.</p>
+  </div>
 <script src="i18n.js"></script>
 <script src="swipe.js"></script>
+<script src="tabs.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   let ws = null, uuid = '', action = '', settings = {};
@@ -62,7 +72,8 @@
     action = ai.action;
     settings = Object.assign({ mode: 'press' }, ai.payload && ai.payload.settings);
     $('mode').value = settings.mode; note(); show();
-    PrismaSwipe.mount(ai, () => settings, save);
+    PrismaTabs(document.body, 'profiles').show();
+    PrismaSwipe.mount(ai, () => settings, save, $('touchPane'));
     ws = new WebSocket('ws://127.0.0.1:' + port);
     ws.onopen = () => { ws.send(JSON.stringify({ event: registerEvent, uuid })); };
     ws.onmessage = (m) => {

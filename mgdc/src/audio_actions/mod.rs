@@ -184,18 +184,6 @@ impl ActionGroup for Audio {
                     let small = INSTANCES.lock().await.get(&context).is_some_and(|i| i.settings.small);
                     tokio::spawn(async move { canvas::reply(&context, json!({ "small": small })).await });
                 }
-                // GIF propio para la barra
-                "gif" => {
-                    let data = event.payload.get("data").and_then(|d| d.as_str()).unwrap_or("").to_string();
-                    tokio::spawn(async move {
-                        let r = tokio::task::spawn_blocking(move || crate::player::save_gif(&data)).await.unwrap_or_else(|e| Err(e.to_string()));
-                        let reply = match r {
-                            Ok(id) => json!({ "gif": id }),
-                            Err(e) => json!({ "gifError": e }),
-                        };
-                        canvas::reply(&context, reply).await;
-                    });
-                }
                 "apps" => {
                     tokio::spawn(async move {
                         let apps = worker::run_blocking(audio::apps).await.unwrap_or_default();

@@ -7,10 +7,11 @@
 //! de 14 en las ruedas; mejor pocos datos y grandes.
 
 mod air;
+pub mod alerts;
 mod days;
-mod moon;
 mod now;
 mod pollen;
+pub mod rain;
 mod sun;
 mod uv;
 mod wind;
@@ -32,6 +33,10 @@ pub struct Ctx<'a> {
     pub w: &'a Weather,
     pub city: &'a str,
     pub sky: Option<&'a Sky>,
+    /// Vista «Lluvia»: cuántos minutos enseña
+    pub rain_span: u32,
+    /// Vista «Avisos»: los que hay ahora
+    pub alerts: &'a [alerts::Alert],
 }
 
 /// Una vista del tiempo
@@ -54,12 +59,13 @@ pub static VIEWS: &[View] = &[
     View { id: "tomorrow", on_key: true, on_dial: false, sky: false, draw: days::tomorrow },
     View { id: "after", on_key: true, on_dial: false, sky: false, draw: days::after },
     View { id: "hours", on_key: false, on_dial: true, sky: false, draw: days::hours },
+    View { id: "rain", on_key: true, on_dial: true, sky: false, draw: rain::draw },
+    View { id: "alerts", on_key: true, on_dial: true, sky: false, draw: alerts::list_view },
     View { id: "wind", on_key: true, on_dial: true, sky: false, draw: wind::draw },
     View { id: "uv", on_key: true, on_dial: true, sky: false, draw: uv::draw },
     View { id: "air", on_key: true, on_dial: true, sky: false, draw: air::draw },
     View { id: "pollen", on_key: true, on_dial: true, sky: false, draw: pollen::draw },
     View { id: "sun", on_key: true, on_dial: true, sky: true, draw: sun::draw },
-    View { id: "moon", on_key: true, on_dial: true, sky: true, draw: moon::draw },
 ];
 
 /// La vista `id` si vale para tecla (o rueda)
@@ -74,13 +80,13 @@ pub fn needs_sky(id: &str) -> bool {
 
 /// Dibujo de una vista (cuerpo sin el `<svg>`). Sin datos todavía: «cargando».
 /// Una vista que no vale ahí se ve como «ahora».
-pub fn body(id: &str, dial: bool, w: Option<&Weather>, city: &str, sky: Option<&Sky>) -> String {
+pub fn body(id: &str, dial: bool, w: Option<&Weather>, city: &str, sky: Option<&Sky>, rain_span: u32, alerts: &[alerts::Alert]) -> String {
     let Some(w) = w else {
         let (cx, cy) = if dial { (100.0, 50.0) } else { (72.0, 68.0) };
         return format!("{}{}", text(cx, cy, 20.0, MUTED, false, t("weather.loading")), text(cx, cy + 26.0, 17.0, MUTED, false, &clip(city, 14)));
     };
     let draw = view(id, dial).map_or(now::draw as fn(&Ctx, bool) -> String, |v| v.draw);
-    draw(&Ctx { w, city, sky }, dial)
+    draw(&Ctx { w, city, sky, rain_span, alerts }, dial)
 }
 
 // ------------------------------------------------- piezas de las vistas --
@@ -114,7 +120,7 @@ mod tests {
             assert!(v.on_key || v.on_dial, "{}", v.id);
             assert_eq!(VIEWS.iter().filter(|x| x.id == v.id).count(), 1, "{} repetida", v.id);
         }
-        assert!(needs_sky("sun") && needs_sky("moon") && !needs_sky("now"));
+        assert!(needs_sky("sun") && !needs_sky("moon") && !needs_sky("now"));
         assert!(view("hours", false).is_none() && view("hours", true).is_some());
     }
 
@@ -127,21 +133,21 @@ mod tests {
             (crate::astro::moon(t, 40.4168, -3.7038), t)
         };
         let day_sky = at(14);
-        for v in ["now", "forecast", "today", "tomorrow", "after", "wind", "uv", "air", "pollen", "sun", "moon"] {
-            out.push((format!("tiempo-{v}"), wrap(false, &body(v, false, Some(&w), "Madrid", Some(&day_sky)))));
+        for v in ["now", "forecast", "today", "tomorrow", "after", "rain", "alerts", "wind", "uv", "air", "pollen", "sun"] {
+            out.push((format!("tiempo-{v}"), wrap(false, &body(v, false, Some(&w), "Madrid", Some(&day_sky), 120, &[]))));
         }
         // De noche (la luna fuera y sin salir)
         let mut night = w.clone();
         night.time = "2026-11-16T21:00".into();
         for (name, h) in [("noche-luna", 20u32), ("noche-sin-luna", 2)] {
             let sky = at(h);
-            out.push((format!("tiempo-sun-{name}"), wrap(false, &body("sun", false, Some(&night), "Madrid", Some(&sky)))));
-            out.push((format!("tiempo-rueda-sun-{name}"), wrap(true, &body("sun", true, Some(&night), "Madrid", Some(&sky)))));
+            out.push((format!("tiempo-sun-{name}"), wrap(false, &body("sun", false, Some(&night), "Madrid", Some(&sky), 120, &[]))));
+            out.push((format!("tiempo-rueda-sun-{name}"), wrap(true, &body("sun", true, Some(&night), "Madrid", Some(&sky), 120, &[]))));
         }
-        for v in ["now", "forecast", "hours", "wind", "uv", "air", "pollen", "sun", "moon"] {
-            out.push((format!("tiempo-rueda-{v}"), wrap(true, &body(v, true, Some(&w), "Madrid", Some(&day_sky)))));
+        for v in ["now", "forecast", "hours", "rain", "alerts", "wind", "uv", "air", "pollen", "sun"] {
+            out.push((format!("tiempo-rueda-{v}"), wrap(true, &body(v, true, Some(&w), "Madrid", Some(&day_sky), 120, &[]))));
         }
-        out.push(("cargando".into(), wrap(false, &body("now", false, None, "Madrid", None))));
+        out.push(("cargando".into(), wrap(false, &body("now", false, None, "Madrid", None, 120, &[]))));
     }
 }
 

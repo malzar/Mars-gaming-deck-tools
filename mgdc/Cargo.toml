@@ -1,6 +1,6 @@
 [package]
 name = "prisma"
-version = "0.9.0"
+version = "0.10.0"
 edition = "2024"
 license = "GPL-3.0"
 description = "Prisma: un solo plugin de OpenDeck para los decks MSD-ONE (familia AKP153) y MSD-PRO (familia AKP05 / N4)"
@@ -24,6 +24,7 @@ tokio-util = { version = "0.7.15", features = ["full"] }
 toml = "0.8"
 base64 = "0.22"
 ureq = { version = "2.12", default-features = false, features = ["tls", "json"] }
+roxmltree = "0.20"
 
 # Versión de mirajazz de ambiso: añade LED y vibración para la familia N4 / AKP05.
 # Mantiene la misma API que usan los dispositivos AKP153.

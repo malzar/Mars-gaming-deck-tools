@@ -12,19 +12,16 @@
 //! - `key`: la tecla Reproducir/Pausa
 //! - `dial`: la pantalla de las ruedas de volumen
 //! - `eq`: el ecualizador (simulado o con el volumen real)
-//! - `gif`: el GIF propio de la barra
 //! - `text`: medir y recortar textos, y el deslizamiento de los que no caben
 
 mod dial;
 mod eq;
-mod gif;
 mod key;
 mod music;
 mod text;
 
 pub use dial::{DialStyle, DialView, dial_needs_marquee, render_dial};
 pub use eq::next_eq;
-pub use gif::{gif_frame, save_gif};
 pub use key::{moving, render};
 pub use music::{IconPlace, MusicView, Pixels, music_moving, render_music_dial, render_music_skip};
 pub use text::fit;
@@ -38,7 +35,6 @@ pub enum Bar {
     Eq,
     /// Ecualizador grande y suave, de fondo detrás del texto
     EqBackground,
-    Gif,
 }
 
 impl Bar {
@@ -48,18 +44,12 @@ impl Bar {
             "waves" => Bar::Waves,
             "eq" => Bar::Eq,
             "eqbg" => Bar::EqBackground,
-            "gif" => Bar::Gif,
             _ => Bar::Color,
         }
     }
 
-    /// Lo que se puede usar en un deck; en el MSD-ONE, todo menos el GIF
-    pub fn for_deck(self, small: bool) -> Bar {
-        if small && self == Bar::Gif { Bar::Color } else { self }
-    }
-
     pub fn animated(self) -> bool {
-        matches!(self, Bar::Waves | Bar::Eq | Bar::EqBackground | Bar::Gif)
+        matches!(self, Bar::Waves | Bar::Eq | Bar::EqBackground)
     }
 
     /// Si dibuja un ecualizador (abajo o de fondo)
@@ -91,18 +81,16 @@ pub const EQ_BARS: usize = 12;
 pub(super) const KEY_BARS: usize = 7;
 
 /// Lo que cambia de un fotograma a otro
-pub struct Frame<'a> {
+pub struct Frame {
     /// Segundos desde que empezó esta canción (deslizamiento y ondas)
     pub t: f32,
     /// Altura de cada barra del ecualizador, de 0 a 1
     pub eq: [f32; EQ_BARS],
-    /// Fotograma del GIF propio, ya como imagen PNG en base64
-    pub gif: Option<&'a str>,
 }
 
-impl Frame<'_> {
-    pub fn still() -> Frame<'static> {
-        Frame { t: 0.0, eq: [0.0; EQ_BARS], gif: None }
+impl Frame {
+    pub fn still() -> Frame {
+        Frame { t: 0.0, eq: [0.0; EQ_BARS] }
     }
 }
 
